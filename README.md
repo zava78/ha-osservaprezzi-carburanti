@@ -37,6 +37,29 @@ Entity naming
 - `sensor.<configured-or-api-name>_<fuel>_<self|attended>`
 - `sensor.osservaprezzi_<id>_meta` contains station metadata as attributes.
 
+Lovelace demo card
+
+You can add a simple demo card that shows the station logo, fuel type, current price and a 14-day price history chart using Home Assistant history.
+
+1. Add the resource in Lovelace (Resources) or via YAML pointing to this file:
+
+```
+/local/custom_components/osservaprezzi_carburanti/www/osservaprezzi-card.js
+```
+
+2. Example card configuration:
+
+```yaml
+type: 'custom:osservaprezzi-card'
+entity: sensor.osservaprezzi_48524_benzina_self
+fuel: Benzina
+logo: /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
+```
+
+Notes:
+- The card uses Home Assistant's `history/period` websocket API to fetch the last 14 days of the selected entity's states — ensure Home Assistant history recorder is enabled for the entity to see the graph.
+- Chart is rendered with Chart.js loaded from CDN.
+
 Attributes exposed (fuel sensors)
 
 - `fuel_name`, `is_self`, `brand`, `company`, `name`, `address`, `validity_date`, `brand_logo`, `raw_fuel`

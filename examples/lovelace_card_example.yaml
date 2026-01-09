@@ -1,0 +1,4 @@
+type: 'custom:osservaprezzi-card'
+entity: sensor.osservaprezzi_48524_benzina_self
+fuel: Benzina
+logo: /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
