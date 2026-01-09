@@ -88,44 +88,8 @@ della stazione.
 ```yaml
 type: "custom:osservaprezzi-card"
 entity: sensor.osservaprezzi_48524_benzina_self
-fuel: Benzina
-logo: /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
-```
-
-### Esempio card confronto:
-
-```yaml
-type: "custom:osservaprezzi-compare-card"
-title: "Confronto Benzina"
-fuel: "Benzina"
-entities:
-  - sensor.osservaprezzi_48524_benzina_self
-  - sensor.osservaprezzi_14922_benzina_self
-  - sensor.osservaprezzi_12345_benzina_self
-# opzionale: array parallelo di path per i loghi
-logos:
-  - /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
-  - /local/custom_components/osservaprezzi_carburanti/assets/brands/ip.png
-  - /local/custom_components/osservaprezzi_carburanti/assets/brands/q8.png
-```
-
-### Note sulle card:
-
-- Le risorse JS devono essere aggiunte come risorsa in Lovelace (HACS può
-  semplificare questa operazione se il repository è installato via HACS).
-- Per il grafico è necessario che l'`history recorder` registri gli stati delle
-  entità interessate.
-- La card di confronto ordina la tabella per prezzo (dal più basso) ed
-  evidenzia il prezzo migliore.
-
-## Attributi esposti (sensori carburante)
-
-- `fuel_name`, `is_self`, `brand`, `company`, `name`, `address`, `validity_date`, `brand_logo`, `raw_fuel`
-
-## Loghi brand
-
-- Posiziona i file PNG in `custom_components/osservaprezzi_carburanti/assets/brands/`.
-- I nomi file devono corrispondere alle chiavi mappate in `BRAND_LOGOS` (vedi
+```markdown
+# ha-osservaprezzi-carburanti
   `custom_components/osservaprezzi_carburanti/const.py`).
 
 ## Generazione loghi demo
