@@ -291,9 +291,17 @@ class StationMetaSensor(SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
+        
+        # Use config name or API name
+        data = self.coordinator.data or {}
+        dev_name = self.station_cfg.get("name") or data.get("name") or f"Osservaprezzi {self.station_id}"
+        brand = data.get("brand")
+        if brand:
+            dev_name = f"{dev_name} - {brand}"
+
         return DeviceInfo(
             identifiers={(DOMAIN, identifier)},
-            name=self._name,
+            name=dev_name,
             manufacturer="Osservaprezzi / MIMIT",
         )
 
@@ -327,12 +335,7 @@ class FuelPriceSensor(SensorEntity):
 
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
         mode_label = "Self" if is_self else "Servito"
-        brand = (coordinator.data or {}).get("brand")
-        
-        if brand:
-            self._name = f"{base_name} {self.fuel_name} ({mode_label}) - {brand}"
-        else:
-            self._name = f"{base_name} {self.fuel_name} ({mode_label})"
+        self._name = f"{base_name} {self.fuel_name} ({mode_label})"
 
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
@@ -436,10 +439,15 @@ class FuelPriceSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        base_name = self.configured_name or (self.coordinator.data or {}).get("name") or f"Station {self.station_id}"
+        data = self.coordinator.data or {}
+        base_name = self.configured_name or data.get("name") or f"Station {self.station_id}"
+        brand = data.get("brand")
+        if brand:
+            base_name = f"{base_name} - {brand}"
+
         identifier = f"{self.entry_id}_{self.station_id}" if getattr(self, "entry_id", None) else str(self.station_id)
         return DeviceInfo(
             identifiers={(DOMAIN, identifier)},
             name=base_name,
-            manufacturer=(self.coordinator.data or {}).get("company") or "Osservaprezzi",
+            manufacturer=data.get("company") or "Osservaprezzi",
         )
