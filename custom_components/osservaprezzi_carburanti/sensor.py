@@ -242,6 +242,13 @@ class StationMetaSensor(SensorEntity):
             self._unique_id = f"{DOMAIN}_{self.entry_id}_{self.station_id}_meta"
         else:
             self._unique_id = f"{DOMAIN}_{self.station_id}_meta"
+        # Provide an entity description for the meta sensor. No specific
+        # device_class applies, but exposing a description helps newer HA
+        # releases and the entity registry understand this sensor.
+        self.entity_description = SensorEntityDescription(
+            key=self._unique_id,
+            name=self._name,
+        )
 
     @property
     def name(self) -> str:
