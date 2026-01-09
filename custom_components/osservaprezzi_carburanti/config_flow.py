@@ -103,9 +103,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                         preview_line, station_entry = build_station_preview(payload, sid, st.get("name"))
                         preview_lines.append(preview_line)
-                        valid_stations.append(station_entry)
-                        # use provided name if present, otherwise API name
-                        station_entry = {"id": int(sid), "name": st.get("name") or name}
+                        # station_entry returned by build_station_preview already contains id and name
                         valid_stations.append(station_entry)
                 except Exception as exc:  # network/parse error -> mark invalid
                     _LOGGER.debug("Errore di validazione per l'impianto %s: %s", sid, exc)
