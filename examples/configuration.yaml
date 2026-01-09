@@ -1,9 +1,0 @@
-# Example configuration for ha-osservaprezzi-carburanti
-
-osservaprezzi_carburanti:
-  scan_interval: 7200
-  stations:
-    - id: 48524
-      name: "Distributore Ener Coop Borgo Virgilio"
-    - id: 14922
-      name: "Service Area Esempio A1 Nord"

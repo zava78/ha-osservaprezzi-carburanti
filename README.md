@@ -56,30 +56,25 @@ Nota: per cercare gli impianti e ottenere gli ID usa il sito del Ministero: http
 - Flow di configurazione (Config Flow) con anteprima e possibilità di inserire
   più impianti in una singola config entry.
 
-## Installazione rapida (HACS o manuale)
+## Installazione rapida (HACS)
 
-Manuale (sviluppo / locale):
+L'integrazione può essere installata tramite HACS o semplicemente copiando la cartella
+`custom_components/osservaprezzi_carburanti` nella directory `config` di Home Assistant
+se stai lavorando in locale. Dopo l'installazione, riavvia Home Assistant.
 
-- Copia la cartella `custom_components/osservaprezzi_carburanti` nella directory
-  `config` di Home Assistant.
-- Riavvia Home Assistant.
-
-## Esempio configurazione YAML (opzionale, `configuration.yaml`):
-
-```yaml
-osservaprezzi_carburanti:
-  scan_interval: 7200 # secondi, default 3600
-  stations:
-    - id: 48524
-      name: "Distributore Ener Coop Borgo Virgilio"
-    - id: 14922
-      name: "Service Area Esempio A1 Nord"
-```
+La configurazione degli impianti avviene tramite l'interfaccia (Config Flow) — non è
+più necessario aggiungere manualmente ID o blocchi YAML: usa l'interfaccia
+"Integrazioni" → "Aggiungi Integrazione" e cerca "Osservaprezzi Carburanti".
 
 ## Nomi delle entità
 
 - `sensor.<nome-configurato-o-API>_<carburante>_<self|attended>`
 - `sensor.osservaprezzi_<id>_meta` contiene i metadati dell'impianto negli attributi.
+
+Le entità e i dispositivi vengono creati automaticamente quando aggiungi gli impianti
+tramite il Config Flow. Se aggiungi una singola stazione, il titolo della Config Entry
+viene impostato automaticamente sul campo `company` (se presente nell'API) o sul nome
+della stazione.
 
 ## Card Lovelace
 
@@ -189,9 +184,10 @@ commerciali e distribuire le opere derivate con la stessa licenza.
 ## Flow di configurazione (Config Flow)
 
 L'integrazione fornisce un Config Flow per aggiungere gli impianti dall'interfaccia
-"Integrazioni". Nel form puoi inserire più impianti separandoli con righe
-distinte; ogni riga può essere solo l'ID numerico oppure `id,name` (separato da
-virgola o punto e virgola).
+"Integrazioni" → "Aggiungi Integrazione" → cerca "Osservaprezzi Carburanti".
+
+Nel form puoi inserire più impianti separandoli con righe distinte; ogni riga può
+essere solo l'ID numerico oppure `id,name` (separato da virgola o punto e virgola).
 
 Esempio di righe accettate nel form:
 
@@ -200,8 +196,10 @@ Esempio di righe accettate nel form:
 14922;Service Area Esempio A1 Nord
 ```
 
-Quando completi il flow viene creata una singola config entry contenente tutti
-gli impianti inseriti; ogni impianto esporrà i propri sensori sotto quella entry.
+Quando completi il flow viene creata una singola Config Entry contenente tutti
+gli impianti inseriti; ogni impianto esporrà i propri sensori e dispositivi sotto
+quella entry. Il processo è completamente automatico: non sono richieste
+modifiche manuali a `configuration.yaml`.
 
 ## Gestione entità e dispositivi
 
