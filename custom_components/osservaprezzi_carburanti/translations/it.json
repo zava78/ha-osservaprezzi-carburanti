@@ -1,1 +1,41 @@
-{"config":{"step":{"user":{"title":"Configura Osservaprezzi Carburanti","description":"Inserisci gli ID dei distributori (uno per riga). Per trovare gli ID usa: {suggested_link}"},"confirm":{"title":"Conferma impianti","description":"Saranno aggiunti i seguenti {valid_count} impianti:\n{preview}\nID non validi: {invalid_ids}"}},"error":{"invalid_stations":"ID impianto non validi: {invalid_ids}"}},"entity":{"name":"Sensore Osservaprezzi Carburanti"}}
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configura Osservaprezzi Carburanti",
+                "menu_options": {
+                    "search": "Cerca per Zona",
+                    "manual": "Inserimento Manuale IDs"
+                }
+            },
+            "manual": {
+                "title": "Inserimento Manuale",
+                "description": "Inserisci gli ID dei distributori (uno per riga). Per trovare gli ID usa: {suggested_link}"
+            },
+            "region": {
+                "title": "Seleziona Regione"
+            },
+            "province": {
+                "title": "Seleziona Provincia"
+            },
+            "town": {
+                "title": "Seleziona Comune"
+            },
+            "select_station": {
+                "title": "Seleziona Stazioni"
+            },
+            "confirm": {
+                "title": "Conferma impianti",
+                "description": "Saranno aggiunti i seguenti {valid_count} impianti:\n{preview}\nID non validi: {invalid_ids}"
+            }
+        },
+        "error": {
+            "invalid_stations": "ID impianto non validi: {invalid_ids}",
+            "search_failed": "Ricerca fallita",
+            "no_stations_found": "Nessuna stazione trovata"
+        }
+    },
+    "entity": {
+        "name": "Sensore Osservaprezzi Carburanti"
+    }
+}
