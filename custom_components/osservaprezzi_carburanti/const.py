@@ -28,8 +28,8 @@ REQUEST_TIMEOUT = 10
 # Data keys stored in hass.data
 DATA_COORDINATORS = f"{DOMAIN}_coordinators"
 
-# Default device class/icon
-DEFAULT_ICON = "mdi:gas-station"
+# Default device class/icon (icona carburante)
+DEFAULT_ICON = "mdi:fuel"
 
 # Helper: scan interval as timedelta
 def scan_interval_td(seconds: int) -> timedelta:

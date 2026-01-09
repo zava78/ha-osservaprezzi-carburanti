@@ -1,6 +1,6 @@
-"""Config flow for osservaprezzi_carburanti (skeleton).
+"""Config flow per osservaprezzi_carburanti.
 
-This is optional; providing minimal skeleton to be extended later.
+Modulo minimo del Config Flow; fornito come scheletro estendibile.
 """
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _parse_stations_field(value: str) -> list[dict]:
-    """Parse a multiline/CSV stations field into a list of station dicts.
+    """Parsa un campo multilinea/CSV contenente gli impianti in una lista di dict.
 
-    Supported formats per line:
+    Formati accettati per riga:
     - 48524
     - 48524,Distributore Ener Coop
     - 48524;Distributore Ener Coop
-    Comma or semicolon separates id and optional friendly name. Blank lines ignored.
+    La virgola o il punto e virgola separano l'id e il nome facoltativo. Le righe vuote vengono ignorate.
     """
     stations: list[dict] = []
     if not value:
@@ -34,7 +34,7 @@ def _parse_stations_field(value: str) -> list[dict]:
         raw = line.strip()
         if not raw:
             continue
-        # try comma then semicolon
+        # prova prima la virgola poi il punto e virgola
         for sep in (",", ";"):
             if sep in raw:
                 parts = [p.strip() for p in raw.split(sep, 1)]
@@ -58,9 +58,9 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
-        """Initial step: accept multiple stations as multiline text.
+        """Passo iniziale: accetta più impianti come testo multilinea.
 
-        The `stations` field accepts one station per line in the form `id[,name]`.
+        Il campo `stations` accetta una riga per impianto nella forma `id[,name]`.
         """
         errors: dict[str, str] = {}
         if user_input is None:
@@ -69,7 +69,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("stations", default="48524"):
                     str,
                     vol.Optional("scan_interval", default=3600): int,
-                    vol.Optional("title", default="Osservaprezzi stations"): str,
+                    vol.Optional("title", default="Stazioni Osservaprezzi"): str,
                 }
             )
             return self.async_show_form(step_id="user", data_schema=data_schema)
@@ -79,7 +79,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not stations:
             errors["stations"] = "invalid_stations"
 
-        # Live validation: call the Osservaprezzi API for each station id
+        # Validazione live: chiama l'API Osservaprezzi per ogni id impianto
         if not errors:
             session = async_get_clientsession(self.hass)
             invalid_ids: list[int] = []
@@ -97,7 +97,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             continue
                         payload = await resp.json()
                         if not isinstance(payload, dict) or ("id" not in payload and "Id" not in payload):
-                            _LOGGER.debug("Validation: station %s returned unexpected payload", sid)
+                            _LOGGER.debug("Validazione: l'impianto %s ha restituito un payload inatteso", sid)
                             invalid_ids.append(sid)
                             continue
 
@@ -108,18 +108,18 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         station_entry = {"id": int(sid), "name": st.get("name") or name}
                         valid_stations.append(station_entry)
                 except Exception as exc:  # network/parse error -> mark invalid
-                    _LOGGER.debug("Validation error for station %s: %s", sid, exc)
+                    _LOGGER.debug("Errore di validazione per l'impianto %s: %s", sid, exc)
                     invalid_ids.append(sid)
 
             if invalid_ids:
-                # prepare to offer user to proceed only with valid stations
+                # prepara la proposta per consentire all'utente di procedere solo con gli impianti validi
                 invalid_list = ", ".join(str(i) for i in invalid_ids)
-                _LOGGER.warning("Config flow: invalid station ids: %s", invalid_list)
+                _LOGGER.warning("Config flow: id impianto non validi: %s", invalid_list)
                 # store validated subsets on the flow instance
                 self._valid_stations = valid_stations
                 self._invalid_ids = invalid_ids
                 self._pending_scan_interval = int(user_input.get("scan_interval") or 3600)
-                self._pending_title = user_input.get("title") or "Osservaprezzi stations"
+                self._pending_title = user_input.get("title") or "Stazioni Osservaprezzi"
                 self._preview_text = "\n".join(preview_lines)
 
                 # ask user to confirm whether to proceed with valid stations only

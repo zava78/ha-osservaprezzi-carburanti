@@ -23,7 +23,7 @@ class OsservaprezziCard extends HTMLElement {
     this._shadow.appendChild(style);
     this._shadow.appendChild(this._container);
 
-    // header
+    // intestazione
     this._header = document.createElement('div');
     this._header.className = 'os-header';
     this._logo = document.createElement('img');
@@ -39,12 +39,12 @@ class OsservaprezziCard extends HTMLElement {
     this._header.appendChild(this._titleWrap);
     this._container.appendChild(this._header);
 
-    // price
+    // prezzo
     this._priceEl = document.createElement('div');
     this._priceEl.className = 'os-price';
     this._container.appendChild(this._priceEl);
 
-    // chart
+    // grafico
     this._canvas = document.createElement('canvas');
     this._container.appendChild(this._canvas);
 
@@ -53,7 +53,7 @@ class OsservaprezziCard extends HTMLElement {
 
   setConfig(config) {
     if (!config || !config.entity) {
-      throw new Error('You need to define an entity');
+      throw new Error('Devi definire un\'entità nel campo `entity` della configurazione');
     }
     this._config = config;
   }
@@ -66,7 +66,7 @@ class OsservaprezziCard extends HTMLElement {
     const name = (entity && entity.attributes && entity.attributes.name) || entityId;
     const price = entity ? entity.state : 'unavailable';
 
-    // update header
+    // aggiorna intestazione
     if (logo) {
       // logo may be a local path like /local/...
       this._logo.src = logo;
@@ -77,10 +77,10 @@ class OsservaprezziCard extends HTMLElement {
     this._title.textContent = name;
     this._sub.textContent = fuel;
 
-    // update price
+    // aggiorna prezzo
     this._priceEl.textContent = price && price !== 'unknown' ? `${price} €/l` : 'n/a';
 
-    // fetch history for last 14 days and draw chart
+    // recupera lo storico degli ultimi 14 giorni e disegna il grafico
     this._drawHistory(entityId);
   }
 
@@ -96,7 +96,7 @@ class OsservaprezziCard extends HTMLElement {
         filter_entity_id: [entityId],
       });
 
-      // history is array of arrays per entity
+      // lo storico è un array di array per ogni entità
       const series = (history && history[0]) || [];
       const points = series.map(s => ({
         t: new Date(s.last_changed),
@@ -106,7 +106,7 @@ class OsservaprezziCard extends HTMLElement {
       const labels = points.map(p => p.t.toISOString().split('T')[0]);
       const data = points.map(p => p.v);
 
-      // lazy load Chart.js if not present
+      // carica Chart.js in modo lazy se non presente
       await this._ensureChart();
       if (this._chart) {
         this._chart.data.labels = labels;
@@ -138,8 +138,8 @@ class OsservaprezziCard extends HTMLElement {
         });
       }
     } catch (err) {
-      // ignore history errors, clear chart
-      console.error('Error fetching history for', entityId, err);
+      // ignora errori sullo storico, pulisci il grafico e logga in console
+      console.error('Errore recupero storico per', entityId, err);
     }
   }
 

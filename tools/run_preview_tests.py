@@ -1,15 +1,15 @@
-"""Simple runner for preview tests without pytest.
+"""Runner semplice per i test di anteprima senza pytest.
 
-This script imports the test module and runs its functions.
+Questo script importa il modulo di test e invoca le sue funzioni.
 
-Run with:
+Esegui con:
     python .\tools\run_preview_tests.py
 """
 from importlib import import_module
 from pathlib import Path
 import sys
 
-# Ensure repo root is on sys.path so the `tests` package is importable
+# Assicura che la root del repository sia in `sys.path` così il package `tests` è importabile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -29,4 +29,4 @@ for name in dir(mod):
 if failed:
     raise SystemExit(1)
 
-print("All tests passed.")
+print("Tutti i test sono passati.")

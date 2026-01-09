@@ -31,16 +31,16 @@ def test_meta_and_fuel_sensor_basic():
     meta = StationMetaSensor(coord, {"id": 123, "name": "Test Stazione"}, entry_id="entry1")
     fuel = FuelPriceSensor(coord, {"id": 123, "name": "Test Stazione"}, "Benzina", True, entry_id="entry1")
 
-    # Meta sensor attributes
+    # Attributi del sensore meta
     attrs = meta.extra_state_attributes
     assert attrs.get("company") == "ACME Srl"
     assert "address" in attrs
 
-    # Fuel sensor value
+    # Valore del sensore carburante
     val = fuel.native_value
     assert isinstance(val, float) and abs(val - 1.659) < 0.0001
 
-    # Device info identifiers include entry id
+    # Gli identificatori del device includono l'entry id
     assert any(str(123) in s for s in list(meta.device_info.identifiers)[0])
 
 
@@ -65,7 +65,7 @@ def test_sensor_description_and_state_class():
     coord = FakeCoordinator(data, last_ok=True)
     fuel = FuelPriceSensor(coord, {"id": 7, "name": "Desc"}, "Gasolio", False, entry_id="e7")
 
-    # Check the description presence and state class assigned
+    # Verifica presenza della descrizione e della state_class assegnata
     desc = getattr(fuel, "entity_description", None)
     assert desc is not None
     # also check internal attr used for HA 2025.12 compatibility

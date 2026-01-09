@@ -48,7 +48,7 @@ def _normalize(text: Optional[str]) -> str:
 
 
 def _format_address(data: Dict[str, Any]) -> str:
-    # Attempt to extract a readable address from known fields, fallback to str(data)
+    # Tenta di estrarre un indirizzo leggibile dai campi noti, altrimenti usa una fallback
     for key in ("address", "indirizzo", "street"):
         if key in data and data[key]:
             return data[key]
@@ -64,7 +64,7 @@ def _format_address(data: Dict[str, Any]) -> str:
 
 
 class StationDataUpdateCoordinator(DataUpdateCoordinator):
-    """Coordinator to fetch station data from Osservaprezzi API."""
+    """Coordinator per ottenere i dati dell'impianto dall'API Osservaprezzi."""
 
     def __init__(self, hass: HomeAssistant, station_id: int, scan_interval: int):
         self.station_id = station_id
@@ -76,9 +76,9 @@ class StationDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self) -> Dict[str, Any]:
-        """Fetch data from the API and return JSON."""
+        """Recupera i dati dall'API e ritorna il JSON."""
         url = API_URL_TEMPLATE.format(id=self.station_id)
-        _LOGGER.debug("Fetching station %s from %s", self.station_id, url)
+        _LOGGER.debug("Richiedo dati per impianto %s da %s", self.station_id, url)
 
         session = async_get_clientsession(self.hass)
         try:
@@ -93,8 +93,8 @@ class StationDataUpdateCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.debug("Fetched data for %s: %s", self.station_id, data.keys())
                 return data
-        except Exception as err:  # noqa: BLE001 - we want to log and wrap
-            _LOGGER.exception("Error fetching station %s: %s", self.station_id, err)
+        except Exception as err:  # noqa: BLE001 - vogliamo loggare e rilanciare
+            _LOGGER.exception("Errore recupero dati per impianto %s: %s", self.station_id, err)
             raise UpdateFailed(err)
 
 
@@ -104,15 +104,15 @@ async def async_setup_platform(
         async_add_entities,
         discovery_info=None,
 ) -> None:
-        """Configurazione via YAML: crea sensori per le stazioni elencate in config.
+    """Configurazione via YAML: crea sensori per le stazioni elencate nella configurazione.
 
-        Schema YAML supportato (vedi README):
-            osservaprezzi_carburanti:
-                scan_interval: 7200
-                stations:
-                    - id: 48524
-                        name: "Distributore Ener Coop"
-        """
+    Schema YAML supportato (vedi README):
+        osservaprezzi_carburanti:
+            scan_interval: 7200
+            stations:
+                - id: 48524
+                  name: "Distributore Ener Coop"
+    """
     yaml = hass.data.get(DOMAIN, {}).get("yaml_config", {}) or {}
     stations = yaml.get("stations", [])
     scan_interval = yaml.get("scan_interval", DEFAULT_SCAN_INTERVAL)
@@ -124,27 +124,27 @@ async def async_setup_platform(
     for station in stations:
         station_id = station.get("id")
         if station_id is None:
-            _LOGGER.warning("Skipping station without id in YAML: %s", station)
+            _LOGGER.warning("Ignoro impianto senza id nella configurazione YAML: %s", station)
             continue
         try:
             station_id_int = int(station_id)
         except (TypeError, ValueError):
-            _LOGGER.warning("Invalid station id '%s', skipping", station_id)
+            _LOGGER.warning("Id impianto non valido '%s', ignoro", station_id)
             continue
 
         coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
-        # store coordinator for later reference
+        # memorizza il coordinator per riferimenti futuri
         hass.data[DATA_COORDINATORS][station_id_int] = coordinator
 
-        # Do an initial refresh (non-blocking pattern: refresh now to populate entities)
+        # Esegui un primo refresh (pattern non bloccante: aggiorna ora per popolare le entità)
         await coordinator.async_request_refresh()
 
         data = coordinator.data or {}
 
-        # Create meta sensor (one per station)
+        # Crea il sensore meta (uno per impianto)
         entities.append(StationMetaSensor(coordinator, station))
 
-        # Extract fuels list robustly
+        # Estrai la lista dei carburanti in modo robusto
         fuels = data.get("fuels") or data.get("carburanti") or []
         if not isinstance(fuels, list):
             fuels = []
@@ -155,7 +155,7 @@ async def async_setup_platform(
                 is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
                 entities.append(FuelPriceSensor(coordinator, station, name, is_self))
         else:
-            # No fuels returned yet: create a generic sensor to surface unavailability
+            # Nessun carburante restituito: crea un sensore generico per segnalare l'indisponibilità
             entities.append(FuelPriceSensor(coordinator, station, None, True))
 
     if entities:
@@ -163,19 +163,19 @@ async def async_setup_platform(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
-    """Set up sensors for a config entry.
+    """Configura i sensori per una config entry.
 
-    A config entry may contain multiple stations in `entry.data['stations']`.
+    Una singola config entry può contenere più impianti in `entry.data['stations']`.
     """
     data = entry.data or {}
     stations = data.get("stations")
     scan_interval = data.get("scan_interval") or DEFAULT_SCAN_INTERVAL
 
     if not stations:
-        # Backwards compatibility: support single station entries
+        # Compatibilità retrocompatibile: supporta entry con un singolo impianto
         station_id = data.get("station_id") or data.get("id")
         if station_id is None:
-            _LOGGER.error("Config entry %s missing station_id(s)", entry.entry_id)
+            _LOGGER.error("La config entry %s manca di station_id", entry.entry_id)
             return
         stations = [{"id": int(station_id), "name": data.get("name") or ""}]
 
@@ -187,18 +187,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         try:
             station_id_int = int(st.get("id"))
         except (TypeError, ValueError):
-            _LOGGER.warning("Skipping invalid station id in entry %s: %s", entry.entry_id, st)
+            _LOGGER.warning("Ignoro id impianto non valido nella entry %s: %s", entry.entry_id, st)
             continue
 
         coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
-        # key coordinators by (entry_id, station_id) to allow multiple stations per entry
+        # indicizza i coordinatori con (entry_id, station_id) per consentire più impianti nella stessa entry
         hass.data[DATA_COORDINATORS][(entry.entry_id, station_id_int)] = coordinator
 
-        # refresh immediately (per-entry initial refresh)
+        # rinnova immediatamente (refresh iniziale per la entry)
         try:
             await coordinator.async_config_entry_first_refresh()
         except Exception as err:
-            _LOGGER.warning("Initial refresh failed for station %s: %s", station_id_int, err)
+            _LOGGER.warning("Refresh iniziale fallito per l'impianto %s: %s", station_id_int, err)
 
         entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, entry.entry_id))
 
@@ -217,7 +217,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload sensors for a config entry."""
-    # remove coordinators for this entry
+    # rimuove i coordinatori associati a questa entry
     coordinators = hass.data.get(DATA_COORDINATORS, {})
     to_remove = [k for k in coordinators.keys() if isinstance(k, tuple) and k[0] == entry.entry_id]
     for k in to_remove:
@@ -237,23 +237,23 @@ class StationMetaSensor(SensorEntity):
         self.station_id = int(station_cfg.get("id"))
         configured_name = station_cfg.get("name")
         self._name = configured_name or f"Osservaprezzi {self.station_id}"
-        # Include entry id in unique_id when available to avoid collisions across entries
+        # Includi l'entry id in `unique_id` quando disponibile per evitare collisioni tra entry
         if self.entry_id:
             self._unique_id = f"{DOMAIN}_{self.entry_id}_{self.station_id}_meta"
         else:
             self._unique_id = f"{DOMAIN}_{self.station_id}_meta"
-        # Provide an entity description for the meta sensor. No specific
-        # device_class applies, but exposing a description helps newer HA
-        # releases and the entity registry understand this sensor.
+        # Fornisce una descrizione dell'entità per il sensore meta. Non si applica
+        # una `device_class` specifica, ma esporre la descrizione aiuta le versioni
+        # più recenti di Home Assistant e il registro delle entità a riconoscerlo.
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
             name=self._name,
             translation_key="station_meta",
             entity_category=None,
         )
-        # Mark as diagnostic in the registry via entity metadata (Home Assistant
-        # will treat this as informational if rendered that way). We don't set a
-        # device_class because this sensor exposes multiple metadata fields.
+        # Contrassegna come diagnostico nel registro tramite i metadati dell'entità
+        # (Home Assistant può mostrarlo come informativo). Non impostiamo una
+        # `device_class` perché questo sensore espone più campi di metadata.
         try:
             # Newer HA versions may support entity_category in descriptions
             self.entity_description.entity_category = None
@@ -298,8 +298,9 @@ class StationMetaSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        # Use entry-scoped identifier when available so each configured entry
-        # gets its own device instance for the same real-world station.
+        # Usa l'identificatore legato all'entry quando disponibile così ogni
+        # entry configurata ottiene la propria istanza device per lo stesso
+        # impianto reale.
         identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
         return DeviceInfo(
             identifiers={(DOMAIN, identifier)},
@@ -337,11 +338,11 @@ class FuelPriceSensor(SensorEntity):
             self._unique_id = f"{DOMAIN}_{self.station_id}_{normalized}_{mode}"
 
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
-        # Produce a clearer, user-friendly entity name
+        # Produci un nome entità più chiaro e leggibile per l'utente
         mode_label = "Self" if is_self else "Servito"
         self._name = f"{base_name} — {self.fuel_name} ({mode_label})"
 
-        # Use SensorEntityDescription to provide metadata (native unit, state_class)
+        # Usa SensorEntityDescription per fornire metadati (unità nativa, state_class)
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
             name=self._name,
@@ -351,7 +352,7 @@ class FuelPriceSensor(SensorEntity):
             device_class=None,
         )
 
-        # Also set modern internal attributes for compatibility
+        # Imposta anche gli attributi interni moderni per compatibilità
         self._attr_native_unit_of_measurement = "€/l"
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -382,7 +383,7 @@ class FuelPriceSensor(SensorEntity):
                     return float(price) if price is not None else None
                 except (TypeError, ValueError):
                     return None
-        # Fallback: try matching by name only
+        # Fallback: prova a corrispondere solo per nome
         for f in fuels:
             candidate = f.get("name") or f.get("fuel") or f.get("description")
             if str(candidate).lower() == str(self.fuel_name).lower():
@@ -395,14 +396,14 @@ class FuelPriceSensor(SensorEntity):
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
-        # We assume €/l for liquid fuels; for kg (metano) the API usually specifies units.
+        # Supponiamo €/l per i carburanti liquidi; per kg (metano) l'API di solito specifica l'unità.
         return "€/l"
 
     @property
     def native_unit_of_measurement(self) -> Optional[str]:
-        # Home Assistant 2025.12 prefers `native_unit_of_measurement` for SensorEntity.
-        # Keep `unit_of_measurement` for backward compatibility but provide the
-        # modern property to ensure proper compatibility with newer HA releases.
+        # Home Assistant 2025.12 preferisce `native_unit_of_measurement` per SensorEntity.
+        # Manteniamo `unit_of_measurement` per retrocompatibilità ma forniamo la
+        # proprietà moderna per assicurare compatibilità con le versioni più recenti di HA.
         return "€/l"
 
     @property
@@ -417,7 +418,7 @@ class FuelPriceSensor(SensorEntity):
         attrs["name"] = data.get("name") or data.get("description")
         attrs["address"] = _format_address(data)
 
-        # find matching fuel entry to expose validityDate and raw data
+        # trova la voce carburante corrispondente per esporre validityDate e i dati raw
         for f in fuels:
             candidate = f.get("name") or f.get("fuel") or f.get("description")
             candidate_is_self = bool(f.get("isSelf") or f.get("is_self") or False)
@@ -426,7 +427,7 @@ class FuelPriceSensor(SensorEntity):
                 validity = f.get("validityDate") or f.get("validity_date")
                 if validity:
                     try:
-                        # Expecting epoch ms or ISO string. Try parsing robustly.
+                        # Ci aspettiamo epoch in ms o stringa ISO. Proviamo a parsare in modo robusto.
                         if isinstance(validity, (int, float)):
                             dt = datetime.fromtimestamp(int(validity) / 1000)
                         else:
@@ -436,7 +437,7 @@ class FuelPriceSensor(SensorEntity):
                         attrs["validity_date"] = str(validity)
                 break
 
-        # Brand logo (if mapped)
+        # Logo del brand (se mappato)
         brand = data.get("brand")
         if brand:
             key = str(brand).lower()
@@ -445,7 +446,7 @@ class FuelPriceSensor(SensorEntity):
                 attrs["brand_logo"] = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
         if not self.available:
             attrs["error"] = "unavailable"
-        attrs[ATTR_ATTRIBUTION] = "Data from Osservaprezzi (MIMIT)"
+        attrs[ATTR_ATTRIBUTION] = "Dati da Osservaprezzi (MIMIT)"
         return attrs
 
     @property

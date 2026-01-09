@@ -24,7 +24,7 @@ class OsservaprezziCompareCard extends HTMLElement {
     this._container.className = 'os-compare';
     this._shadow.appendChild(this._container);
 
-    // Title and controls
+    // Titolo e controlli
     const header = document.createElement('div');
     header.style.display = 'flex';
     header.style.alignItems = 'center';
@@ -40,7 +40,7 @@ class OsservaprezziCompareCard extends HTMLElement {
     this._controls.style.gap = '8px';
     header.appendChild(this._controls);
 
-    // Sort key selector
+    // Selettore criterio di ordinamento
     this._sortKey = 'price';
     this._sortAsc = true;
     this._btnSortKey = document.createElement('button');
@@ -53,7 +53,7 @@ class OsservaprezziCompareCard extends HTMLElement {
     });
     this._controls.appendChild(this._btnSortKey);
 
-    // Toggle asc/desc
+    // Alterna asc/desc
     this._btnToggleDir = document.createElement('button');
     this._btnToggleDir.textContent = '▲';
     this._btnToggleDir.title = 'Clicca per invertire ordine';
@@ -75,7 +75,7 @@ class OsservaprezziCompareCard extends HTMLElement {
 
   setConfig(config) {
     if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length < 2) {
-      throw new Error('Define at least two entities in `entities` array to compare');
+      throw new Error('Definire almeno due entità nell\'array `entities` per poter effettuare il confronto');
     }
     this._config = config;
   }
@@ -93,7 +93,7 @@ class OsservaprezziCompareCard extends HTMLElement {
     const tbody = document.createElement('tbody');
     this._table.appendChild(tbody);
 
-    // populate rows and prepare history fetches
+    // popola le righe e prepara le richieste per gli storici
     this._datasets = [];
     const colors = ['#3f51b5','#e91e63','#009688','#ff9800','#607d8b'];
     const rowsData = [];
@@ -122,11 +122,11 @@ class OsservaprezziCompareCard extends HTMLElement {
 
       rowsData.push({ eid, idx: i, name, priceNum, rowEl: row });
 
-      // prepare empty dataset for chart (keeps dataset order aligned to entities)
+      // prepara dataset vuoti per il grafico (mantiene l'ordine allineato alle entità)
       this._datasets.push({label: name, data: [], borderColor: colors[i % colors.length], backgroundColor: 'rgba(0,0,0,0)', fill:false, tension:0.2});
     });
 
-    // sort rows according to selected sort key and direction
+    // ordina le righe secondo il criterio e la direzione selezionati
     rowsData.sort((a,b)=>{
       const dir = this._sortAsc ? 1 : -1;
       if (this._sortKey === 'name') {
@@ -143,14 +143,14 @@ class OsservaprezziCompareCard extends HTMLElement {
       tbody.appendChild(r.rowEl);
       if (r.priceNum !== null && (bestPrice === null || r.priceNum < bestPrice)) bestPrice = r.priceNum;
     }
-    // highlight the best price row
+    // evidenzia la riga con il prezzo migliore
     if (bestPrice !== null) {
       rowsData.forEach(r=>{
         if (r.priceNum === bestPrice) r.rowEl.classList.add('best-price');
       });
     }
 
-    // draw combined chart (multi-line)
+    // disegna il grafico combinato (multi-linea)
     this._drawHistories(entities);
   }
 
@@ -158,7 +158,7 @@ class OsservaprezziCompareCard extends HTMLElement {
     const end = new Date();
     const start = new Date(Date.now() - 14 * 24 * 3600 * 1000);
     try {
-      // request history for all entities in one call
+      // richiede lo storico per tutte le entità in una chiamata
       const history = await this._hass.callWS({
         type: 'history/period',
         start: start.toISOString(),
@@ -166,7 +166,7 @@ class OsservaprezziCompareCard extends HTMLElement {
         filter_entity_id: entities,
       });
 
-      // normalize labels (dates)
+      // normalizza le etichette (date)
       const labelsSet = new Set();
       const perEntityPoints = entities.map((eid, idx) => {
         const series = (history && history[idx]) || [];
@@ -177,7 +177,7 @@ class OsservaprezziCompareCard extends HTMLElement {
 
       const labels = Array.from(labelsSet).sort();
 
-      // build datasets aligned to labels
+      // costruisci i dataset allineati alle etichette
       this._datasets.forEach((ds, i) => {
         const pts = perEntityPoints[i] || [];
         const map = new Map(pts.map(p=>[p.t,p.v]));
@@ -197,7 +197,7 @@ class OsservaprezziCompareCard extends HTMLElement {
         });
       }
     } catch (err) {
-      console.error('Error fetching histories', err);
+      console.error('Errore recupero storici', err);
     }
   }
 
@@ -218,4 +218,4 @@ class OsservaprezziCompareCard extends HTMLElement {
 customElements.define('osservaprezzi-compare-card', OsservaprezziCompareCard);
 
 window.customCards = window.customCards || [];
-window.customCards.push({ type:'osservaprezzi-compare-card', name:'Osservaprezzi Compare Card', preview:true, description:'Compare same fuel across multiple stations with chart' });
+window.customCards.push({ type:'osservaprezzi-compare-card', name:'Osservaprezzi Compare Card', preview:true, description:'Confronta lo stesso carburante su più stazioni con grafico' });
