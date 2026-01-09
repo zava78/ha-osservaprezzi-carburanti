@@ -107,9 +107,9 @@ class OsservaprezziAPI:
     async def search_by_area(self, region_id: int, province_id: str, town_id: str) -> List[Dict[str, Any]]:
         """Search stations by geographical area (Regione -> Provincia -> Comune)."""
         payload = {
-            "regione": region_id,
-            "provincia": province_id,
-            "comune": town_id,
+            "region": region_id,
+            "province": province_id,
+            "town": town_id,
         }
         try:
             async with self.session.post(API_SEARCH_AREA_URL, json=payload, timeout=REQUEST_TIMEOUT) as resp:
