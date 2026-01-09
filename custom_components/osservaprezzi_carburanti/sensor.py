@@ -248,7 +248,17 @@ class StationMetaSensor(SensorEntity):
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
             name=self._name,
+            translation_key="station_meta",
+            entity_category=None,
         )
+        # Mark as diagnostic in the registry via entity metadata (Home Assistant
+        # will treat this as informational if rendered that way). We don't set a
+        # device_class because this sensor exposes multiple metadata fields.
+        try:
+            # Newer HA versions may support entity_category in descriptions
+            self.entity_description.entity_category = None
+        except Exception:
+            pass
 
     @property
     def name(self) -> str:
@@ -337,6 +347,8 @@ class FuelPriceSensor(SensorEntity):
             name=self._name,
             native_unit_of_measurement="€/l",
             state_class=SensorStateClass.MEASUREMENT,
+            translation_key="fuel_price",
+            device_class=None,
         )
 
         # Also set modern internal attributes for compatibility
