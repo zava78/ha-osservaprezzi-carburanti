@@ -20,3 +20,9 @@ Contributing
 - Esegui i test locali prima di aprire una PR: `python .\tools\run_preview_tests.py`.
 
 License: MIT
+ 
+Badges
+
+- [![Python tests](https://github.com/zava78/ha-osservaprezzi-carburanti/actions/workflows/python-tests.yml/badge.svg)](https://github.com/zava78/ha-osservaprezzi-carburanti/actions)
+- [![Release](https://img.shields.io/github/v/release/zava78/ha-osservaprezzi-carburanti?label=release)](https://github.com/zava78/ha-osservaprezzi-carburanti/releases)
+- [![HACS](https://img.shields.io/badge/HACS-custom-brightgreen.svg)](https://hacs.xyz/)
