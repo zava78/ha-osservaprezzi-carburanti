@@ -8,9 +8,10 @@ about: Segnala un bug riscontrato con l'integrazione
 Scrivi qui una descrizione chiara e concisa del problema.
 
 **Passi per riprodurre**
-1. 
-2. 
-3. 
+
+1.
+2.
+3.
 
 **Comportamento atteso**
 
