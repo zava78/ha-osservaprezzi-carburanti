@@ -20,6 +20,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.config_entries import ConfigEntry
 
 from .const import (
     API_URL_TEMPLATE,
@@ -146,6 +147,61 @@ async def async_setup_platform(
 
     if entities:
         async_add_entities(entities, True)
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    """Set up sensors for a config entry.
+
+    Each config entry represents a single station (in this minimal design).
+    """
+    data = entry.data or {}
+    station_id = data.get("station_id") or data.get("id")
+    if station_id is None:
+        _LOGGER.error("Config entry %s missing station_id", entry.entry_id)
+        return
+
+    # Allow scan interval override in entry
+    scan_interval = data.get("scan_interval") or DEFAULT_SCAN_INTERVAL
+
+    hass.data.setdefault(DATA_COORDINATORS, {})
+
+    try:
+        station_id_int = int(station_id)
+    except (TypeError, ValueError):
+        _LOGGER.error("Invalid station id in entry %s: %s", entry.entry_id, station_id)
+        return
+
+    coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
+    # key coordinators by (entry_id, station_id) to allow multiple entries
+    hass.data[DATA_COORDINATORS][(entry.entry_id, station_id_int)] = coordinator
+
+    # refresh immediately
+    await coordinator.async_config_entry_first_refresh()
+
+    entities: List[SensorEntity] = []
+    entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": data.get("name")}))
+
+    fuels = coordinator.data.get("fuels") or coordinator.data.get("carburanti") or []
+    if isinstance(fuels, list) and fuels:
+        for fuel in fuels:
+            name = fuel.get("name") or fuel.get("fuel") or fuel.get("description")
+            is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
+            entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": data.get("name")}, name, is_self))
+    else:
+        entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": data.get("name")}, None, True))
+
+    if entities:
+        async_add_entities(entities, True)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload sensors for a config entry."""
+    # remove coordinators for this entry
+    coordinators = hass.data.get(DATA_COORDINATORS, {})
+    to_remove = [k for k in coordinators.keys() if isinstance(k, tuple) and k[0] == entry.entry_id]
+    for k in to_remove:
+        coordinators.pop(k, None)
+    return True
 
 
 class StationMetaSensor(SensorEntity):
