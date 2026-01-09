@@ -1,7 +1,7 @@
-"""Sensors for Osservaprezzi Carburanti integration.
+"""Sensori per l'integrazione Osservaprezzi Carburanti.
 
-This module creates sensors per station and per fuel type using
-DataUpdateCoordinator to manage fetching and throttling.
+Questo modulo crea sensori per ogni impianto e per tipo di carburante usando
+DataUpdateCoordinator per gestire il polling e la memorizzazione dei dati.
 """
 from __future__ import annotations
 
@@ -32,6 +32,7 @@ from .const import (
     DOMAIN,
     scan_interval_td,
 )
+from .helpers import find_coordinates
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,12 +95,20 @@ class StationDataUpdateCoordinator(DataUpdateCoordinator):
 
 
 async def async_setup_platform(
-    hass: HomeAssistant,
-    config: Dict[str, Any],
-    async_add_entities,
-    discovery_info=None,
+        hass: HomeAssistant,
+        config: Dict[str, Any],
+        async_add_entities,
+        discovery_info=None,
 ) -> None:
-    """Set up sensors configured via YAML."""
+        """Configurazione via YAML: crea sensori per le stazioni elencate in config.
+
+        Schema YAML supportato (vedi README):
+            osservaprezzi_carburanti:
+                scan_interval: 7200
+                stations:
+                    - id: 48524
+                        name: "Distributore Ener Coop"
+        """
     yaml = hass.data.get(DOMAIN, {}).get("yaml_config", {}) or {}
     stations = yaml.get("stations", [])
     scan_interval = yaml.get("scan_interval", DEFAULT_SCAN_INTERVAL)
@@ -152,43 +161,51 @@ async def async_setup_platform(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up sensors for a config entry.
 
-    Each config entry represents a single station (in this minimal design).
+    A config entry may contain multiple stations in `entry.data['stations']`.
     """
     data = entry.data or {}
-    station_id = data.get("station_id") or data.get("id")
-    if station_id is None:
-        _LOGGER.error("Config entry %s missing station_id", entry.entry_id)
-        return
-
-    # Allow scan interval override in entry
+    stations = data.get("stations")
     scan_interval = data.get("scan_interval") or DEFAULT_SCAN_INTERVAL
+
+    if not stations:
+        # Backwards compatibility: support single station entries
+        station_id = data.get("station_id") or data.get("id")
+        if station_id is None:
+            _LOGGER.error("Config entry %s missing station_id(s)", entry.entry_id)
+            return
+        stations = [{"id": int(station_id), "name": data.get("name") or ""}]
 
     hass.data.setdefault(DATA_COORDINATORS, {})
 
-    try:
-        station_id_int = int(station_id)
-    except (TypeError, ValueError):
-        _LOGGER.error("Invalid station id in entry %s: %s", entry.entry_id, station_id)
-        return
-
-    coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
-    # key coordinators by (entry_id, station_id) to allow multiple entries
-    hass.data[DATA_COORDINATORS][(entry.entry_id, station_id_int)] = coordinator
-
-    # refresh immediately
-    await coordinator.async_config_entry_first_refresh()
-
     entities: List[SensorEntity] = []
-    entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": data.get("name")}))
 
-    fuels = coordinator.data.get("fuels") or coordinator.data.get("carburanti") or []
-    if isinstance(fuels, list) and fuels:
-        for fuel in fuels:
-            name = fuel.get("name") or fuel.get("fuel") or fuel.get("description")
-            is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
-            entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": data.get("name")}, name, is_self))
-    else:
-        entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": data.get("name")}, None, True))
+    for st in stations:
+        try:
+            station_id_int = int(st.get("id"))
+        except (TypeError, ValueError):
+            _LOGGER.warning("Skipping invalid station id in entry %s: %s", entry.entry_id, st)
+            continue
+
+        coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
+        # key coordinators by (entry_id, station_id) to allow multiple stations per entry
+        hass.data[DATA_COORDINATORS][(entry.entry_id, station_id_int)] = coordinator
+
+        # refresh immediately (per-entry initial refresh)
+        try:
+            await coordinator.async_config_entry_first_refresh()
+        except Exception as err:
+            _LOGGER.warning("Initial refresh failed for station %s: %s", station_id_int, err)
+
+        entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": st.get("name")}))
+
+        fuels = coordinator.data.get("fuels") or coordinator.data.get("carburanti") or []
+        if isinstance(fuels, list) and fuels:
+            for fuel in fuels:
+                fname = fuel.get("name") or fuel.get("fuel") or fuel.get("description")
+                is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
+                entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, fname, is_self))
+        else:
+            entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, None, True))
 
     if entities:
         async_add_entities(entities, True)
@@ -205,7 +222,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 class StationMetaSensor(SensorEntity):
-    """Sensor exposing station metadata as attributes."""
+    """Sensore che espone i metadati dell'impianto come attributi."""
 
     _attr_icon = DEFAULT_ICON
 
@@ -243,6 +260,12 @@ class StationMetaSensor(SensorEntity):
         attrs["address"] = _format_address(data)
         attrs["brand"] = data.get("brand")
         attrs["raw"] = data
+        # Se disponibili, aggiungi latitudine/longitudine come attributi separati
+        coords = find_coordinates(data)
+        if coords:
+            attrs["latitude"] = coords[0]
+            attrs["longitude"] = coords[1]
+
         if not self.available:
             attrs["error"] = "unavailable"
         return attrs

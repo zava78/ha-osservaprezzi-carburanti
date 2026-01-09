@@ -85,3 +85,19 @@ Roadmap / Ideas
 - Improve brand logo matching and provide high-quality PNGs
 
 License: MIT
+
+Config Flow (UI)
+
+This integration also provides a Config Flow so you can add stations from the Integrations UI.
+During the flow you can provide multiple stations at once by entering one station per line in the
+form field. Each line can be either the numeric station id, or `id,name` (comma or semicolon separated).
+
+Example lines for the form:
+
+```
+48524,Distributore Ener Coop Borgo Virgilio
+14922;Service Area Esempio A1 Nord
+```
+
+The flow will create one config entry containing all provided stations; each station will expose
+its sensors under that entry.

@@ -1,1 +1,10 @@
-{"config": {"step": {"user": {"title": "Configure Osservaprezzi Carburanti"}}},"entity": {"name": "Osservaprezzi Carburanti Sensor"}}
+{
+	"config": {
+		"step": {
+			"user": {"title": "Configure Osservaprezzi Carburanti"},
+			"confirm": {"title": "Confirm stations", "description": "The following {valid_count} stations will be added:\n{preview}\nInvalid IDs: {invalid_ids}"}
+		},
+		"error": {"invalid_stations": "Invalid station IDs: {invalid_ids}"}
+	},
+	"entity": {"name": "Osservaprezzi Carburanti Sensor"}
+}

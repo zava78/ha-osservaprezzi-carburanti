@@ -1,1 +1,10 @@
-{"config": {"step": {"user": {"title": "Configura Osservaprezzi Carburanti"}}},"entity": {"name": "Sensore Osservaprezzi Carburanti"}}
+{
+	"config": {
+		"step": {
+			"user": {"title": "Configura Osservaprezzi Carburanti"},
+			"confirm": {"title": "Conferma impianti", "description": "Saranno aggiunti i seguenti {valid_count} impianti:\n{preview}\nID non validi: {invalid_ids}"}
+		},
+		"error": {"invalid_stations": "ID impianto non validi: {invalid_ids}"}
+	},
+	"entity": {"name": "Sensore Osservaprezzi Carburanti"}
+}
