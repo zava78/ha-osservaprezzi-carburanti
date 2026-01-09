@@ -44,6 +44,8 @@ Note importanti:
 Integrazione custom per Home Assistant che legge i prezzi dei distributori/aree
 di servizio dall'API pubblica italiana "Osservaprezzi Carburanti" (MIMIT).
 
+Nota: per cercare gli impianti e ottenere gli ID usa il sito del Ministero: https://carburanti.mise.gov.it/ospzSearch/zona
+
 ## Caratteristiche principali
 
 - Crea sensori per ogni impianto e per ogni tipo di carburante (self / servito)

@@ -66,13 +66,17 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             data_schema = vol.Schema(
                 {
-                    vol.Required("stations", default="48524"):
-                    str,
+                    vol.Required("stations", default="48524"): str,
                     vol.Optional("scan_interval", default=3600): int,
                     vol.Optional("title", default="Stazioni Osservaprezzi"): str,
                 }
             )
-            return self.async_show_form(step_id="user", data_schema=data_schema)
+            # suggerisci il sito per trovare gli ID delle stazioni
+            return self.async_show_form(
+                step_id="user",
+                data_schema=data_schema,
+                description_placeholders={"suggested_link": "https://carburanti.mise.gov.it/ospzSearch/zona"},
+            )
 
         stations_raw = user_input.get("stations", "")
         stations = _parse_stations_field(stations_raw)
@@ -140,7 +144,13 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "title": user_input.get("title") or "Osservaprezzi stations",
         }
 
-        title = data["title"]
+        # Se è stata aggiunta una sola stazione, usa il campo 'company' come title se presente
+        if len(valid_stations) == 1:
+            company = valid_stations[0].get("company")
+            name = valid_stations[0].get("name")
+            title = company or name or data["title"]
+        else:
+            title = data["title"]
         return self.async_create_entry(title=title, data=data)
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None):
@@ -173,5 +183,11 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "scan_interval": getattr(self, "_pending_scan_interval", 3600),
             "title": getattr(self, "_pending_title", "Osservaprezzi stations"),
         }
-        title = data["title"]
+        # Se viene creata una sola stazione valida, prediligi il company come titolo
+        if len(stations) == 1:
+            company = stations[0].get("company")
+            name = stations[0].get("name")
+            title = company or name or data["title"]
+        else:
+            title = data["title"]
         return self.async_create_entry(title=title, data=data)

@@ -71,5 +71,5 @@ def build_station_preview(payload: Dict[str, Any], sid: int, provided_name: Opti
 
     preview = " ".join(p for p in parts if p)
 
-    station_entry = {"id": int(sid), "name": provided_name or name}
+    station_entry = {"id": int(sid), "name": provided_name or name, "company": company}
     return preview, station_entry
