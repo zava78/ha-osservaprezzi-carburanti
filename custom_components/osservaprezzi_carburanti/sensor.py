@@ -327,7 +327,7 @@ class FuelPriceSensor(SensorEntity):
 
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
         mode_label = "Self" if is_self else "Servito"
-        self._name = f"{base_name} — {self.fuel_name} ({mode_label})"
+        self._name = f"{base_name} {self.fuel_name} ({mode_label})"
 
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
