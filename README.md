@@ -129,3 +129,19 @@ Example lines for the form:
 
 The flow will create one config entry containing all provided stations; each station will expose
 its sensors under that entry.
+
+**Gestione delle entità e dispositivi (User friendly)**
+
+- **Ogni distributore configurato tramite l'interfaccia (Config Entry) è esposto come un singolo dispositivo** in Home Assistant. I sensori dei carburanti (self/servito) vengono creati come entità figlie di quel dispositivo — questo permette di:
+  - Disabilitare o rinominare facilmente tutte le entità di un distributore dal pannello "Dispositivi" → seleziona il distributore → gestione entità.
+  - Vedere chiaramente quale configurazione (entry) ha creato il dispositivo, evitando collisioni quando lo stesso distributore è aggiunto più volte in diverse integrazioni/istanze.
+
+- **Unique IDs e DeviceInfo:** le entità generate includono l'`entry_id` della configurazione nel `unique_id` e negli `identifiers` del `DeviceInfo` quando l'entità è creata da una Config Entry. Questo significa che:
+  - Lo stesso distributore aggiunto due volte in due entry distinte apparirà come due dispositivi separati (ognuno con le proprie entità), permettendoti di gestirli indipendentemente.
+  - Se usi la configurazione YAML, il comportamento resta invariato (le entità non avranno `entry_id` nello unique_id).
+
+- **Disabilitare singole entità:** per rimuovere temporaneamente una singola lettura (ad esempio un tipo di carburante che non ti interessa), vai su `Impostazioni -> Dispositivi ed entità -> Entità`, cerca la `sensor.<nome>` desiderata e scegli `Disabilita`. Le entità non saranno rimosse dalla configurazione ma non invieranno stati finché disabilitate.
+
+- **Icona del componente:** le entità usano una icona predefinita `mdi:fuel` (puoi cambiarla dalle impostazioni dell'entità se preferisci un'icona diversa).
+
+Se vuoi, posso aggiungere una sezione con immagini schermate (screenshot) che mostrano i passaggi per disabilitare/rinominare entità in Home Assistant.
