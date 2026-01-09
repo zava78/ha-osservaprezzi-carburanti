@@ -6,6 +6,8 @@ from datetime import timedelta
 DOMAIN = "osservaprezzi_carburanti"
 DEFAULT_SCAN_INTERVAL = 3600  # seconds
 API_URL_TEMPLATE = "https://carburanti.mise.gov.it/ospzApi/registry/servicearea/{id}"
+API_BRAND_LOGOS_URL = "https://carburanti.mise.gov.it/ospzApi/registry/alllogos"
+API_SEARCH_AREA_URL = "https://carburanti.mise.gov.it/ospzApi/search/area"
 
 # Map brand names (as they may appear in API) to asset filenames in assets/brands/
 BRAND_LOGOS = {

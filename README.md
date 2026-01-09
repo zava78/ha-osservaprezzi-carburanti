@@ -1,3 +1,5 @@
+![Logo](images/logo.png)
+
 # ha-osservaprezzi-carburanti
 
 [![Release](https://img.shields.io/github/v/release/zava78/ha-osservaprezzi-carburanti?label=release)](https://github.com/zava78/ha-osservaprezzi-carburanti/releases)
@@ -175,9 +177,12 @@ modifiche manuali a `configuration.yaml`.
 
 Se vuoi, posso aggiungere screenshot o ulteriori esempi di automazioni che
 sfruttano questi sensori.
+
 ## Lovelace: card di esempio
+
 ````markdown
 # ha-osservaprezzi-carburanti
+
 [![Release](https://img.shields.io/github/v/release/zava78/ha-osservaprezzi-carburanti?label=release)](https://github.com/zava78/ha-osservaprezzi-carburanti/releases)
 [![HACS](https://img.shields.io/badge/HACS-custom-brightgreen.svg)](https://hacs.xyz/)
 [![Coverage](https://img.shields.io/codecov/c/github/zava78/ha-osservaprezzi-carburanti?logo=codecov)](https://codecov.io/gh/zava78/ha-osservaprezzi-carburanti)
@@ -226,7 +231,7 @@ della stazione.
 
 ### Esempio card singola:
 
-```yaml
+````yaml
 type: "custom:osservaprezzi-card"
 entity: sensor.osservaprezzi_48524_benzina_self
 ```markdown
@@ -240,7 +245,7 @@ placeholder (PNG 1x1 trasparenti) che puoi sostituire con immagini reali.
 
 ```powershell
 python .\tools\generate_brand_placeholders.py
-```
+````
 
 ## Come trovare l'ID di un impianto
 
@@ -319,3 +324,4 @@ modifiche manuali a `configuration.yaml`.
 
 Se vuoi, posso aggiungere screenshot o ulteriori esempi di automazioni che
 sfruttano questi sensori.
+````

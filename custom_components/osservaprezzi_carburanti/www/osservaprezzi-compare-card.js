@@ -8,149 +8,190 @@ class OsservaprezziCompareCard extends HTMLElement {
   connectedCallback() {
     if (this._initialized) return;
     this._shadow = this.attachShadow({ mode: 'open' });
+    this._container = document.createElement('ha-card');
+    this._container.className = 'os-compare';
     const style = document.createElement('style');
     style.textContent = `
-      .os-compare { font-family: sans-serif; border:1px solid var(--card-border-color,#ddd); border-radius:8px; padding:12px; background:var(--card-background,#fff)}
-      .os-title { font-weight:600; margin-bottom:8px }
-      table { width:100%; border-collapse:collapse; margin-bottom:8px }
-      td,th { padding:6px 8px; border-bottom:1px solid rgba(0,0,0,0.06); text-align:left }
-      .logo { width:28px; height:28px; object-fit:contain }
-      canvas { width:100%; height:180px }
-      .best-price { background: rgba(76,175,80,0.08); font-weight:700 }
+      :host { display: block; }
+      ha-card {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-text-color);
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+      }
+      .icon-btn {
+        background: none;
+        border: 1px solid var(--divider-color, #eee);
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 4px 8px;
+        color: var(--secondary-text-color);
+        font-size: 0.85rem;
+        transition: all 0.2s;
+      }
+      .icon-btn:hover {
+         background: var(--secondary-background-color, #f5f5f5);
+      }
+      
+      .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: separate; 
+        border-spacing: 0;
+      }
+      th {
+        text-align: left;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+        font-size: 0.85rem;
+        padding: 8px;
+        border-bottom: 2px solid var(--divider-color, #eee);
+      }
+      td {
+        padding: 12px 8px;
+        border-bottom: 1px solid var(--divider-color, #f0f0f0);
+        vertical-align: middle;
+      }
+      tr:last-child td { border-bottom: none; }
+      
+      .st-logo {
+        width: 32px; height: 32px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 50%;
+        padding: 2px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .st-name {
+        font-weight: 500;
+        font-size: 0.95rem;
+      }
+      .st-price {
+        font-weight: 700;
+        font-size: 1.0rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .best-price .st-price {
+        color: var(--success-color, #4caf50);
+      }
+      .chart-wrap {
+        height: 200px;
+        width: 100%;
+        margin-top: 8px;
+      }
     `;
     this._shadow.appendChild(style);
-
-    this._container = document.createElement('div');
-    this._container.className = 'os-compare';
     this._shadow.appendChild(this._container);
 
-    // Titolo e controlli
+    // Header structure
     const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'space-between';
+    header.className = 'header';
+    this._titleEl = document.createElement('div');
+    this._titleEl.className = 'title';
+    header.appendChild(this._titleEl);
+
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+
+    this._btnSort = document.createElement('button');
+    this._btnSort.className = 'icon-btn';
+    this._btnSort.innerText = 'Prezzo ↕';
+    this._btnSort.onclick = () => {
+      this._sortKey = this._sortKey === 'price' ? 'name' : 'price';
+      this._btnSort.innerText = this._sortKey === 'price' ? 'Prezzo ↕' : 'Nome ↕';
+      this._update();
+    };
+    controls.appendChild(this._btnSort);
+
+    header.appendChild(controls);
     this._container.appendChild(header);
 
-    this._title = document.createElement('div');
-    this._title.className = 'os-title';
-    header.appendChild(this._title);
-
-    this._controls = document.createElement('div');
-    this._controls.style.display = 'flex';
-    this._controls.style.gap = '8px';
-    header.appendChild(this._controls);
-
-    // Selettore criterio di ordinamento
-    this._sortKey = 'price';
-    this._sortAsc = true;
-    this._btnSortKey = document.createElement('button');
-    this._btnSortKey.textContent = 'Ordina: Prezzo';
-    this._btnSortKey.title = 'Clicca per cambiare criterio di ordinamento';
-    this._btnSortKey.addEventListener('click', () => {
-      this._sortKey = this._sortKey === 'price' ? 'name' : 'price';
-      this._btnSortKey.textContent = this._sortKey === 'price' ? 'Ordina: Prezzo' : 'Ordina: Nome';
-      this._update();
-    });
-    this._controls.appendChild(this._btnSortKey);
-
-    // Alterna asc/desc
-    this._btnToggleDir = document.createElement('button');
-    this._btnToggleDir.textContent = '▲';
-    this._btnToggleDir.title = 'Clicca per invertire ordine';
-    this._btnToggleDir.addEventListener('click', () => {
-      this._sortAsc = !this._sortAsc;
-      this._btnToggleDir.textContent = this._sortAsc ? '▲' : '▼';
-      this._update();
-    });
-    this._controls.appendChild(this._btnToggleDir);
-
+    // Table
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'table-responsive';
     this._table = document.createElement('table');
-    this._container.appendChild(this._table);
+    tableWrap.appendChild(this._table);
+    this._container.appendChild(tableWrap);
 
+    // Chart
+    const chartWrap = document.createElement('div');
+    chartWrap.className = 'chart-wrap';
     this._canvas = document.createElement('canvas');
-    this._container.appendChild(this._canvas);
+    chartWrap.appendChild(this._canvas);
+    this._container.appendChild(chartWrap);
 
+    this._sortKey = 'price';
     this._initialized = true;
   }
 
   setConfig(config) {
-    if (!config || !config.entities || !Array.isArray(config.entities) || config.entities.length < 2) {
-      throw new Error('Definire almeno due entità nell\'array `entities` per poter effettuare il confronto');
+    if (!config || !config.entities || !Array.isArray(config.entities)) {
+      throw new Error('Please define entities list');
     }
     this._config = config;
   }
 
   _update() {
-    const entities = this._config.entities || [];
+    const entities = this._config.entities;
     const fuel = this._config.fuel || '';
-    this._title.textContent = this._config.title || `Confronto: ${fuel}`;
+    this._titleEl.innerText = this._config.title || `Confronto ${fuel}`;
 
-    // build table header
-    this._table.innerHTML = '';
-    const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Logo</th><th>Distributore</th><th>Prezzo</th></tr>';
-    this._table.appendChild(thead);
+    // Header
+    this._table.innerHTML = `<thead><tr><th style="width:50px"></th><th>Stazione</th><th style="text-align:right">Prezzo</th></tr></thead>`;
     const tbody = document.createElement('tbody');
     this._table.appendChild(tbody);
 
-    // popola le righe e prepara le richieste per gli storici
-    this._datasets = [];
-    const colors = ['#3f51b5','#e91e63','#009688','#ff9800','#607d8b'];
-    const rowsData = [];
-    entities.forEach((eid, i) => {
-      const st = this._hass.states[eid] || {};
-      const name = (st.attributes && st.attributes.name) || eid;
-      const priceStr = (st && st.state && st.state !== 'unknown') ? st.state : null;
-      const priceNum = priceStr ? parseFloat(priceStr) : null;
+    let rows = [];
+    entities.forEach((eid, idx) => {
+      const state = this._hass.states[eid];
+      if (!state) return;
+      const price = parseFloat(state.state);
+      const name = state.attributes.name || eid;
+      const logo = state.attributes.brand_logo || '';
 
-      const row = document.createElement('tr');
-      const logoTd = document.createElement('td');
-      const img = document.createElement('img');
-      img.className = 'logo';
-      img.src = (st.attributes && st.attributes.brand_logo) || (this._config.logos && this._config.logos[i]) || '';
-      if (!img.src) img.style.display = 'none';
-      logoTd.appendChild(img);
-      row.appendChild(logoTd);
-
-      const nameTd = document.createElement('td');
-      nameTd.textContent = name;
-      row.appendChild(nameTd);
-
-      const priceTd = document.createElement('td');
-      priceTd.textContent = priceNum !== null ? `${priceNum} €/l` : 'n/a';
-      row.appendChild(priceTd);
-
-      rowsData.push({ eid, idx: i, name, priceNum, rowEl: row });
-
-      // prepara dataset vuoti per il grafico (mantiene l'ordine allineato alle entità)
-      this._datasets.push({label: name, data: [], borderColor: colors[i % colors.length], backgroundColor: 'rgba(0,0,0,0)', fill:false, tension:0.2});
-    });
-
-    // ordina le righe secondo il criterio e la direzione selezionati
-    rowsData.sort((a,b)=>{
-      const dir = this._sortAsc ? 1 : -1;
-      if (this._sortKey === 'name') {
-        return dir * a.name.localeCompare(b.name);
-      }
-      // price
-      const va = a.priceNum===null?Number.POSITIVE_INFINITY:a.priceNum;
-      const vb = b.priceNum===null?Number.POSITIVE_INFINITY:b.priceNum;
-      return dir * (va - vb);
-    });
-    tbody.innerHTML = '';
-    let bestPrice = null;
-    for (const r of rowsData) {
-      tbody.appendChild(r.rowEl);
-      if (r.priceNum !== null && (bestPrice === null || r.priceNum < bestPrice)) bestPrice = r.priceNum;
-    }
-    // evidenzia la riga con il prezzo migliore
-    if (bestPrice !== null) {
-      rowsData.forEach(r=>{
-        if (r.priceNum === bestPrice) r.rowEl.classList.add('best-price');
+      rows.push({
+        eid, idx, price: isNaN(price) ? Infinity : price, name, logo, stateStr: state.state
       });
-    }
+    });
 
-    // disegna il grafico combinato (multi-linea)
+    // Sort
+    rows.sort((a, b) => {
+      if (this._sortKey === 'price') return a.price - b.price;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Find best
+    const bestPrice = Math.min(...rows.map(r => r.price));
+
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      if (Math.abs(r.price - bestPrice) < 0.001 && r.price !== Infinity) tr.classList.add('best-price');
+
+      tr.innerHTML = `
+            <td><img src="${r.logo}" class="st-logo" onerror="this.style.display='none'"></td>
+            <td class="st-name">${r.name.replace('Distributore', '').replace('Stazione', '')}</td>
+            <td style="text-align:right" class="st-price">${r.price !== Infinity ? r.stateStr + ' €' : '--'}</td>
+        `;
+      tbody.appendChild(tr);
+    });
+
     this._drawHistories(entities);
   }
 
@@ -158,7 +199,6 @@ class OsservaprezziCompareCard extends HTMLElement {
     const end = new Date();
     const start = new Date(Date.now() - 14 * 24 * 3600 * 1000);
     try {
-      // richiede lo storico per tutte le entità in una chiamata
       const history = await this._hass.callWS({
         type: 'history/period',
         start: start.toISOString(),
@@ -166,38 +206,48 @@ class OsservaprezziCompareCard extends HTMLElement {
         filter_entity_id: entities,
       });
 
-      // normalizza le etichette (date)
-      const labelsSet = new Set();
-      const perEntityPoints = entities.map((eid, idx) => {
-        const series = (history && history[idx]) || [];
-        const pts = series.map(s => ({t: new Date(s.last_changed).toISOString().split('T')[0], v: parseFloat(s.state) || null})).filter(p=>p.v!==null);
-        pts.forEach(p=>labelsSet.add(p.t));
-        return pts;
-      });
+      const datasets = [];
+      // Colors from Material Design
+      const colors = ['#2196f3', '#f44336', '#4caf50', '#ff9800', '#9c27b0', '#00bcd4', '#795548'];
 
-      const labels = Array.from(labelsSet).sort();
+      entities.forEach((eid, i) => {
+        const series = history[i] || [];
+        const pts = series.map(s => ({ x: new Date(s.last_changed).toISOString().split('T')[0], y: parseFloat(s.state) })).filter(p => !isNaN(p.y));
 
-      // costruisci i dataset allineati alle etichette
-      this._datasets.forEach((ds, i) => {
-        const pts = perEntityPoints[i] || [];
-        const map = new Map(pts.map(p=>[p.t,p.v]));
-        ds.data = labels.map(l => map.has(l) ? map.get(l) : null);
+        // Basic aggregation (last price per day for simplicity in chart)
+        const distinctDays = {};
+        pts.forEach(p => distinctDays[p.x] = p.y);
+
+        datasets.push({
+          label: this._hass.states[eid]?.attributes?.name || eid,
+          data: Object.keys(distinctDays).sort().map(d => ({ x: d, y: distinctDays[d] })),
+          borderColor: colors[i % colors.length],
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2
+        });
       });
 
       await this._ensureChart();
       if (this._chart) {
-        this._chart.data.labels = labels;
-        this._chart.data.datasets = this._datasets;
+        this._chart.data.datasets = datasets;
         this._chart.update();
       } else {
         this._chart = new Chart(this._canvas.getContext('2d'), {
           type: 'line',
-          data: { labels: labels, datasets: this._datasets },
-          options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true}}, scales:{x:{display:false}} }
+          data: { datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: { x: { type: 'category' } },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+          }
         });
       }
-    } catch (err) {
-      console.error('Errore recupero storici', err);
+
+    } catch (e) {
+      console.error(e);
     }
   }
 
@@ -218,4 +268,4 @@ class OsservaprezziCompareCard extends HTMLElement {
 customElements.define('osservaprezzi-compare-card', OsservaprezziCompareCard);
 
 window.customCards = window.customCards || [];
-window.customCards.push({ type:'osservaprezzi-compare-card', name:'Osservaprezzi Compare Card', preview:true, description:'Confronta lo stesso carburante su più stazioni con grafico' });
+window.customCards.push({ type: 'osservaprezzi-compare-card', name: 'Osservaprezzi Compare Card', preview: true, description: 'Confronta lo stesso carburante su più stazioni con grafico' });
