@@ -1,3 +1,32 @@
+## Lovelace demo card
+
+You can add a simple demo card that shows the station logo, fuel type, current price and a 14-day price history chart using Home Assistant history.
+### Card di confronto (più stazioni)
+
+Questa card confronta lo stesso tipo di carburante su più stazioni, mostrando i prezzi correnti affiancati e un grafico con le serie storiche (ultimi 14 giorni).
+Posiziona il file `osservaprezzi-compare-card.js` in `www/` come per la card singola, quindi aggiungi la risorsa in Lovelace.
+
+Esempio di configurazione:
+
+```yaml
+type: 'custom:osservaprezzi-compare-card'
+title: 'Confronto Benzina'
+fuel: 'Benzina'
+entities:
+  - sensor.osservaprezzi_48524_benzina_self
+  - sensor.osservaprezzi_14922_benzina_self
+  - sensor.osservaprezzi_12345_benzina_self
+# opzionale: array parallelo di paths per i loghi
+logos:
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/ip.png
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/q8.png
+```
+
+Note:
+- La card richiede almeno 2 entità nella lista `entities`.
+- Per vedere il grafico è necessario che l'`history recorder` registri gli stati delle entità.
+- Le serie del grafico vengono richieste in un'unica chiamata `history/period` per tutte le entità fornite.
 # ha-osservaprezzi-carburanti
 
 [![Python tests](https://github.com/zava78/ha-osservaprezzi-carburanti/actions/workflows/python-tests.yml/badge.svg)](https://github.com/zava78/ha-osservaprezzi-carburanti/actions)
