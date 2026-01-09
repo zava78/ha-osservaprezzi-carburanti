@@ -327,17 +327,17 @@ class FuelPriceSensor(SensorEntity):
 
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
         mode_label = "Self" if is_self else "Servito"
-        self._name = f"{base_name} â€” {self.fuel_name} ({mode_label})"
+        self._name = f"{base_name} — {self.fuel_name} ({mode_label})"
 
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
             name=self._name,
-            native_unit_of_measurement="â‚¬/l",
+            native_unit_of_measurement="€/l",
             state_class=SensorStateClass.MEASUREMENT,
             translation_key="fuel_price",
             device_class=None,
         )
-        self._attr_native_unit_of_measurement = "â‚¬/l"
+        self._attr_native_unit_of_measurement = "€/l"
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
@@ -371,11 +371,11 @@ class FuelPriceSensor(SensorEntity):
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
-        return "â‚¬/l"
+        return "€/l"
 
     @property
     def native_unit_of_measurement(self) -> Optional[str]:
-        return "â‚¬/l"
+        return "€/l"
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:

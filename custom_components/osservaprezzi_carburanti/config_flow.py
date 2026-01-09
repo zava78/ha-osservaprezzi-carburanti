@@ -86,8 +86,8 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_province()
 
         regions = await api.get_regions()
-        # regions is list of {id, name}
-        options = {r["id"]: r["name"] for r in regions}
+        # regions is list of {id, description}
+        options = {r["id"]: r.get("description", r.get("name")) for r in regions}
         # Sort by name
         sorted_options = dict(sorted(options.items(), key=lambda item: item[1]))
 
@@ -107,7 +107,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         region_id = self._search_data["region"]
         provinces = await api.get_provinces(region_id)
-        options = {p["id"]: p["name"] for p in provinces}
+        options = {p["id"]: p.get("description", p.get("name")) for p in provinces}
         sorted_options = dict(sorted(options.items(), key=lambda item: item[1]))
 
         return self.async_show_form(
@@ -126,7 +126,7 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         province_id = self._search_data["province"]
         towns = await api.get_towns(province_id)
-        options = {t["id"]: t["name"] for t in towns}
+        options = {t["id"]: t.get("description", t.get("name")) for t in towns}
         sorted_options = dict(sorted(options.items(), key=lambda item: item[1]))
 
         return self.async_show_form(
