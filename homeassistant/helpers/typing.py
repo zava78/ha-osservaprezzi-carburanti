@@ -1,3 +1,4 @@
-from typing import Any
+"""RIMOSSO: placeholder per il modulo typing dello shim locale.
 
-StateType = Any
+Questo file faceva parte dello shim di sviluppo e non è più utilizzato.
+"""

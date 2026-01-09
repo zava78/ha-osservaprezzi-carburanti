@@ -1,6 +1,7 @@
-"""Osservaprezzi Carburanti integration.
+"""Integrazione Osservaprezzi Carburanti.
 
-Minimal init: store YAML config (if present) in hass.data for platforms to consume.
+Inizializzazione minima: salva la configurazione YAML (se presente) in
+`hass.data` affinché le piattaforme possano leggerla.
 """
 from __future__ import annotations
 

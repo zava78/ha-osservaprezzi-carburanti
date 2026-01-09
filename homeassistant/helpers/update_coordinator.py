@@ -14,5 +14,9 @@ class DataUpdateCoordinator:
     async def async_request_refresh(self):
         return True
 
-    async def async_config_entry_first_refresh(self):
-        return True
+    """RIMOSSO: placeholder per lo shim update_coordinator.
+
+    Questo modulo era uno stub semplificato per i test locali e non è più
+    incluso nel repository. Usare `homeassistant.helpers.update_coordinator`
+    reale o fornire mock nei test.
+    """

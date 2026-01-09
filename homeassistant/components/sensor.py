@@ -1,23 +1,5 @@
-from typing import Any
+"""RIMOSSO: placeholder per il modulo `sensor` dello shim locale."""
 
-
-class SensorEntity:
-    def __init__(self):
-        self._attr_native_unit_of_measurement = None
-        self._attr_state_class = None
-
-    @property
-    def name(self) -> str:
-        return getattr(self, "_name", "")
-
-
-class SensorEntityDescription:
-    def __init__(self, *, key: str | None = None, name: str | None = None, native_unit_of_measurement: Any = None, state_class: Any = None, **kwargs):
-        self.key = key
-        self.name = name
-        self.native_unit_of_measurement = native_unit_of_measurement
-        self.state_class = state_class
-
-
-class SensorStateClass:
-    MEASUREMENT = "measurement"
+# Lo shim minimo per `sensor` era utilizzato solamente per sviluppo locale
+# ed è stato rimosso. I test e la CI dovrebbero fare riferimento al pacchetto
+# ufficiale di Home Assistant o usare mock appropriati.

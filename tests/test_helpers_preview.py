@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 
-# Ensure the integration package directory is importable without importing Home Assistant
+# Assicura che la directory del package dell'integrazione sia importabile senza importare Home Assistant
 ROOT = Path(__file__).resolve().parents[1]
 COMP_DIR = ROOT / "custom_components" / "osservaprezzi_carburanti"
 sys.path.insert(0, str(COMP_DIR))

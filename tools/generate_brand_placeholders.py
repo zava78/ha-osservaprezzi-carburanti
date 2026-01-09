@@ -1,9 +1,9 @@
-"""Generate placeholder PNG logos for ha-osservaprezzi-carburanti.
+"""Genera loghi PNG placeholder per ha-osservaprezzi-carburanti.
 
-This script writes small 1x1 transparent PNG files for a list of brand
-filenames into `custom_components/osservaprezzi_carburanti/assets/brands/`.
+Questo script scrive piccoli file PNG trasparenti 1x1 per una lista di
+nomi file brand nella cartella `custom_components/osservaprezzi_carburanti/assets/brands/`.
 
-Run from project root (PowerShell example):
+Esegui dalla root del progetto (esempio PowerShell):
 
     python .\tools\generate_brand_placeholders.py
 
@@ -45,9 +45,9 @@ def main() -> None:
         path = BRANDS_DIR / fname
         with open(path, "wb") as f:
             f.write(png_bytes)
-        print(f"Wrote placeholder: {path}")
+        print(f"Creato placeholder: {path}")
 
-    print("Done. Replace these files with real PNG logos as needed.")
+    print("Fatto. Sostituisci questi file con loghi PNG reali quando necessario.")
 
 
 if __name__ == "__main__":

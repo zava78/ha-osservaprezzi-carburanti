@@ -1,22 +1,5 @@
-def async_get_clientsession(hass):
-    """Return a dummy session object. Not used in tests where network is mocked."""
-    class DummySession:
-        async def get(self, *args, **kwargs):
-            class Resp:
-                status = 200
+"""RIMOSSO: placeholder per `aiohttp_client` dello shim locale.
 
-                async def __aenter__(self):
-                    return self
-
-                async def __aexit__(self, exc_type, exc, tb):
-                    return False
-
-                async def text(self):
-                    return ""
-
-                async def json(self):
-                    return {}
-
-            return Resp()
-
-    return DummySession()
+Usare `homeassistant.helpers.aiohttp_client.async_get_clientsession` del
+pacchetto ufficiale di Home Assistant o fornire un mock nei test.
+"""
