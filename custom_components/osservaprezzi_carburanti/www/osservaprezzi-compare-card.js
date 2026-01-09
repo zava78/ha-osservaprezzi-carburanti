@@ -16,6 +16,7 @@ class OsservaprezziCompareCard extends HTMLElement {
       td,th { padding:6px 8px; border-bottom:1px solid rgba(0,0,0,0.06); text-align:left }
       .logo { width:28px; height:28px; object-fit:contain }
       canvas { width:100%; height:180px }
+      .best-price { background: rgba(76,175,80,0.08); font-weight:700 }
     `;
     this._shadow.appendChild(style);
 
@@ -59,29 +60,54 @@ class OsservaprezziCompareCard extends HTMLElement {
     // populate rows and prepare history fetches
     this._datasets = [];
     const colors = ['#3f51b5','#e91e63','#009688','#ff9800','#607d8b'];
+    const rowsData = [];
     entities.forEach((eid, i) => {
       const st = this._hass.states[eid] || {};
+      const name = (st.attributes && st.attributes.name) || eid;
+      const priceStr = (st && st.state && st.state !== 'unknown') ? st.state : null;
+      const priceNum = priceStr ? parseFloat(priceStr) : null;
+
       const row = document.createElement('tr');
       const logoTd = document.createElement('td');
       const img = document.createElement('img');
       img.className = 'logo';
-      img.src = (st.attributes && st.attributes.brand_logo) || this._config.logos && this._config.logos[i] || '';
+      img.src = (st.attributes && st.attributes.brand_logo) || (this._config.logos && this._config.logos[i]) || '';
       if (!img.src) img.style.display = 'none';
       logoTd.appendChild(img);
       row.appendChild(logoTd);
 
       const nameTd = document.createElement('td');
-      nameTd.textContent = (st.attributes && st.attributes.name) || eid;
+      nameTd.textContent = name;
       row.appendChild(nameTd);
 
       const priceTd = document.createElement('td');
-      priceTd.textContent = (st && st.state && st.state !== 'unknown') ? `${st.state} €/l` : 'n/a';
+      priceTd.textContent = priceNum !== null ? `${priceNum} €/l` : 'n/a';
       row.appendChild(priceTd);
-      tbody.appendChild(row);
 
-      // prepare empty dataset for chart
-      this._datasets.push({label: nameTd.textContent, data: [], borderColor: colors[i % colors.length], backgroundColor: 'rgba(0,0,0,0)', fill:false, tension:0.2});
+      rowsData.push({ eid, idx: i, name, priceNum, rowEl: row });
+
+      // prepare empty dataset for chart (keeps dataset order aligned to entities)
+      this._datasets.push({label: name, data: [], borderColor: colors[i % colors.length], backgroundColor: 'rgba(0,0,0,0)', fill:false, tension:0.2});
     });
+
+    // sort rows by numeric price (null treated as Infinity) and append to tbody
+    rowsData.sort((a,b)=>{
+      const va = a.priceNum===null?Number.POSITIVE_INFINITY:a.priceNum;
+      const vb = b.priceNum===null?Number.POSITIVE_INFINITY:b.priceNum;
+      return va - vb;
+    });
+    tbody.innerHTML = '';
+    let bestPrice = null;
+    for (const r of rowsData) {
+      tbody.appendChild(r.rowEl);
+      if (r.priceNum !== null && (bestPrice === null || r.priceNum < bestPrice)) bestPrice = r.priceNum;
+    }
+    // highlight the best price row
+    if (bestPrice !== null) {
+      rowsData.forEach(r=>{
+        if (r.priceNum === bestPrice) r.rowEl.classList.add('best-price');
+      });
+    }
 
     // draw combined chart (multi-line)
     this._drawHistories(entities);

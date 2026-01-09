@@ -73,10 +73,54 @@ You can add a simple demo card that shows the station logo, fuel type, current p
 1. Add the resource in Lovelace (Resources) or via YAML pointing to this file:
 
 ```
-/local/custom_components/osservaprezzi_carburanti/www/osservaprezzi-card.js
+# ha-osservaprezzi-carburanti
+
+[![Python tests](https://github.com/zava78/ha-osservaprezzi-carburanti/actions/workflows/python-tests.yml/badge.svg)](https://github.com/zava78/ha-osservaprezzi-carburanti/actions)
+[![Release](https://img.shields.io/github/v/release/zava78/ha-osservaprezzi-carburanti?label=release)](https://github.com/zava78/ha-osservaprezzi-carburanti/releases)
+[![HACS](https://img.shields.io/badge/HACS-custom-brightgreen.svg)](https://hacs.xyz/)
+[![Coverage](https://img.shields.io/codecov/c/github/zava78/ha-osservaprezzi-carburanti?logo=codecov)](https://codecov.io/gh/zava78/ha-osservaprezzi-carburanti)
+
+Integrazione custom per Home Assistant che legge i prezzi dei distributori/aree di servizio dall'API pubblica italiana "Osservaprezzi Carburanti" (MIMIT).
+
+## Caratteristiche principali
+
+- Crea sensori per ogni impianto e per ogni tipo di carburante (self / servito) usando l'ID dell'impianto fornito da Osservaprezzi
+- Usa `DataUpdateCoordinator` di Home Assistant per un polling efficiente
+- Espone metadati dell'impianto e attributi del carburante; supporto per loghi brand in `assets/brands/`
+- Flow di configurazione (Config Flow) con anteprima e possibilità di inserire più impianti in una sola entry
+
+## Installazione rapida (HACS o manuale)
+
+Manuale (sviluppo / locale):
+
+- Copia la cartella `custom_components/osservaprezzi_carburanti` nella directory `config` di Home Assistant.
+- Riavvia Home Assistant.
+
+## Esempio configurazione YAML (opzionale, `configuration.yaml`):
+
+```yaml
+osservaprezzi_carburanti:
+  scan_interval: 7200 # secondi, default 3600
+  stations:
+    - id: 48524
+      name: "Distributore Ener Coop Borgo Virgilio"
+    - id: 14922
+      name: "Service Area Esempio A1 Nord"
 ```
 
-2. Example card configuration:
+## Nomi delle entità
+
+- `sensor.<nome-configurato-o-API>_<carburante>_<self|attended>`
+- `sensor.osservaprezzi_<id>_meta` contiene i metadati dell'impianto negli attributi
+
+## Card Lovelace
+
+Sono fornite due card demo nella cartella `www/`:
+
+- `osservaprezzi-card.js` — card singola che mostra logo, carburante, prezzo corrente e grafico 14 giorni per un'entità.
+- `osservaprezzi-compare-card.js` — card di confronto che mostra prezzi correnti affiancati per più stazioni e un grafico multi-linea con le serie storiche.
+
+### Esempio card singola:
 
 ```yaml
 type: 'custom:osservaprezzi-card'
@@ -85,41 +129,57 @@ fuel: Benzina
 logo: /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
 ```
 
-Notes:
-- The card uses Home Assistant's `history/period` websocket API to fetch the last 14 days of the selected entity's states — ensure Home Assistant history recorder is enabled for the entity to see the graph.
-- Chart is rendered with Chart.js loaded from CDN.
+### Esempio card confronto:
 
-Attributes exposed (fuel sensors)
+```yaml
+type: 'custom:osservaprezzi-compare-card'
+title: 'Confronto Benzina'
+fuel: 'Benzina'
+entities:
+  - sensor.osservaprezzi_48524_benzina_self
+  - sensor.osservaprezzi_14922_benzina_self
+  - sensor.osservaprezzi_12345_benzina_self
+# opzionale: array parallelo di path per i loghi
+logos:
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/eni.png
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/ip.png
+  - /local/custom_components/osservaprezzi_carburanti/assets/brands/q8.png
+```
+
+### Note sulle card:
+
+- Le card richiedono che le risorse JS siano aggiunte come risorsa in Lovelace (HACS può aiutare con questa operazione se il repository è installato via HACS).
+- Per il grafico è necessario che l'`history recorder` registri gli stati delle entità interessate.
+- La card di confronto ordina la tabella per prezzo (dal più basso) e evidenzia il prezzo migliore.
+
+## Attributi esposti (sensori carburante)
 
 - `fuel_name`, `is_self`, `brand`, `company`, `name`, `address`, `validity_date`, `brand_logo`, `raw_fuel`
 
-Brand logos
+## Loghi brand
 
-- Place PNG files in `custom_components/osservaprezzi_carburanti/assets/brands/`.
-- Filenames should match the keys in `BRAND_LOGOS` mapping (see `const.py`).
+- Posiziona i file PNG in `custom_components/osservaprezzi_carburanti/assets/brands/`.
+- I nomi file devono corrispondere alle chiavi mappate in `BRAND_LOGOS` (vedi `custom_components/osservaprezzi_carburanti/const.py`).
 
-Generating demo placeholder logos
+## Generazione loghi demo
 
-A small script is provided to generate demo placeholder PNG logos (1x1 transparent)
-for the known brand filenames. Run this from the project root with Python:
+Uno script `tools/generate_brand_placeholders.py` è fornito per generare loghi placeholder (PNG 1x1 trasparenti) che puoi sostituire con immagini reali.
 
 ```powershell
 python .\tools\generate_brand_placeholders.py
 ```
 
-Replace the generated files in `custom_components/osservaprezzi_carburanti/assets/brands/` with real PNGs when available.
+## Come trovare l'ID di un impianto
 
-How to find station ID
+- Usa la pagina di ricerca Osservaprezzi: https://carburanti.mise.gov.it/ospzSearch/zona
+- Apri la richiesta API e cerca l'URL `/servicearea/<ID>` per trovare l'ID numerico.
 
-- Use the Osservaprezzi search page: https://carburanti.mise.gov.it/ospzSearch/zona
-- Inspect the API endpoint for a station, URL contains the ID, e.g. `.../servicearea/14922`.
+## Pubblicazione su GitHub e HACS
 
-Publishing to GitHub and HACS
+1. Crea un repository GitHub denominato `ha-osservaprezzi-carburanti` sotto il tuo account `zava78` (se non lo hai già fatto).
+2. Spingi il codice locale sul repository remoto e aggiungi l'integrazione a HACS come repository personalizzato (Integration).
 
-1. Create a new repository named `ha-osservaprezzi-carburanti` under your `zava78` account.
-2. Initialize the repo locally and push the files.
-
-Suggested commands (PowerShell):
+Comandi suggeriti (PowerShell):
 
 ```powershell
 cd "C:\path\to\your\project\folder"
@@ -131,46 +191,36 @@ git branch -M main
 git push -u origin main
 ```
 
-To add to HACS as a custom repository:
+Per aggiungere il repository a HACS:
 
-- In HACS -> Integrations -> three dots -> Custom repositories -> add the GitHub repo URL and select `integration`.
+- In HACS -> Integrations -> tre punti -> Custom repositories -> incolla l'URL del repo e seleziona `integration`.
 
-Roadmap / Ideas
+## Roadmap / Idee
 
-- Add a Config Flow UI to manage station IDs from the Integrations page
-- Add per-fuel sensors with history/stats
-- Improve brand logo matching and provide high-quality PNGs
+- Migliorare il matching dei loghi dei brand e aggiungere PNG ad alta qualità
+- Aggiungere più test automatici e job di lint in CI
+- Aggiungere screenshot e guida passo-passo nella documentazione
 
-License: MIT
+Licenza: MIT
 
-Config Flow (UI)
+## Flow di configurazione (Config Flow)
 
-This integration also provides a Config Flow so you can add stations from the Integrations UI.
-During the flow you can provide multiple stations at once by entering one station per line in the
-form field. Each line can be either the numeric station id, or `id,name` (comma or semicolon separated).
+L'integrazione fornisce anche un Config Flow per aggiungere gli impianti dall'interfaccia "Integrazioni".
+Nel form puoi inserire più impianti separandoli con righe distinte; ogni riga può essere solo l'ID numerico oppure `id,name` (separato da virgola o punto e virgola).
 
-Example lines for the form:
+Esempio di righe accettate nel form:
 
 ```
 48524,Distributore Ener Coop Borgo Virgilio
 14922;Service Area Esempio A1 Nord
 ```
 
-The flow will create one config entry containing all provided stations; each station will expose
-its sensors under that entry.
+Quando completi il flow viene creata una singola config entry contenente tutti gli impianti inseriti; ogni impianto esporrà i propri sensori sotto quella entry.
 
-**Gestione delle entità e dispositivi (User friendly)**
+## Gestione entità e dispositivi
 
-- **Ogni distributore configurato tramite l'interfaccia (Config Entry) è esposto come un singolo dispositivo** in Home Assistant. I sensori dei carburanti (self/servito) vengono creati come entità figlie di quel dispositivo — questo permette di:
-  - Disabilitare o rinominare facilmente tutte le entità di un distributore dal pannello "Dispositivi" → seleziona il distributore → gestione entità.
-  - Vedere chiaramente quale configurazione (entry) ha creato il dispositivo, evitando collisioni quando lo stesso distributore è aggiunto più volte in diverse integrazioni/istanze.
+- Ogni distributore aggiunto tramite Config Entry è esposto come dispositivo in Home Assistant; i sensori carburante sono entità figlie del dispositivo.
+- Le entità create da una Config Entry includono l'`entry_id` nel `unique_id` e negli `identifiers` del `DeviceInfo`, quindi lo stesso distributore aggiunto in due entry diverse apparirà come due dispositivi distinti (evitando collisioni).
+- Se usi YAML, il comportamento rimane invariato: le entità non avranno `entry_id` nello `unique_id`.
 
-- **Unique IDs e DeviceInfo:** le entità generate includono l'`entry_id` della configurazione nel `unique_id` e negli `identifiers` del `DeviceInfo` quando l'entità è creata da una Config Entry. Questo significa che:
-  - Lo stesso distributore aggiunto due volte in due entry distinte apparirà come due dispositivi separati (ognuno con le proprie entità), permettendoti di gestirli indipendentemente.
-  - Se usi la configurazione YAML, il comportamento resta invariato (le entità non avranno `entry_id` nello unique_id).
-
-- **Disabilitare singole entità:** per rimuovere temporaneamente una singola lettura (ad esempio un tipo di carburante che non ti interessa), vai su `Impostazioni -> Dispositivi ed entità -> Entità`, cerca la `sensor.<nome>` desiderata e scegli `Disabilita`. Le entità non saranno rimosse dalla configurazione ma non invieranno stati finché disabilitate.
-
-- **Icona del componente:** le entità usano una icona predefinita `mdi:fuel` (puoi cambiarla dalle impostazioni dell'entità se preferisci un'icona diversa).
-
-Se vuoi, posso aggiungere una sezione con immagini schermate (screenshot) che mostrano i passaggi per disabilitare/rinominare entità in Home Assistant.
+Se vuoi, posso aggiungere screenshot o ulteriori esempi di automazioni che sfruttano questi sensori.
