@@ -1,0 +1,320 @@
+"""Sensors for Osservaprezzi Carburanti integration.
+
+This module creates sensors per station and per fuel type using
+DataUpdateCoordinator to manage fetching and throttling.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ATTRIBUTION, CONF_NAME
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+
+from .const import (
+    API_URL_TEMPLATE,
+    BRAND_LOGOS,
+    DATA_COORDINATORS,
+    DEFAULT_ICON,
+    DEFAULT_SCAN_INTERVAL,
+    REQUEST_TIMEOUT,
+    DOMAIN,
+    scan_interval_td,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _normalize(text: Optional[str]) -> str:
+    if not text:
+        return "unknown"
+    return "".join(c if c.isalnum() else "_" for c in text.lower())
+
+
+def _format_address(data: Dict[str, Any]) -> str:
+    # Attempt to extract a readable address from known fields, fallback to str(data)
+    for key in ("address", "indirizzo", "street"):
+        if key in data and data[key]:
+            return data[key]
+
+    parts = []
+    for k in ("street", "civic", "city", "municipality", "prov", "province", "zip"):
+        v = data.get(k) or data.get(k.upper())
+        if v:
+            parts.append(str(v))
+    if parts:
+        return ", ".join(parts)
+    return data.get("name") or data.get("description") or ""
+
+
+class StationDataUpdateCoordinator(DataUpdateCoordinator):
+    """Coordinator to fetch station data from Osservaprezzi API."""
+
+    def __init__(self, hass: HomeAssistant, station_id: int, scan_interval: int):
+        self.station_id = station_id
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"osservaprezzi_{station_id}",
+            update_interval=scan_interval_td(scan_interval),
+        )
+
+    async def _async_update_data(self) -> Dict[str, Any]:
+        """Fetch data from the API and return JSON."""
+        url = API_URL_TEMPLATE.format(id=self.station_id)
+        _LOGGER.debug("Fetching station %s from %s", self.station_id, url)
+
+        session = async_get_clientsession(self.hass)
+        try:
+            async with session.get(url, timeout=REQUEST_TIMEOUT) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    raise UpdateFailed(f"HTTP {resp.status}: {text}")
+
+                data = await resp.json()
+                if not isinstance(data, dict):
+                    raise UpdateFailed("Unexpected JSON structure")
+
+                _LOGGER.debug("Fetched data for %s: %s", self.station_id, data.keys())
+                return data
+        except Exception as err:  # noqa: BLE001 - we want to log and wrap
+            _LOGGER.exception("Error fetching station %s: %s", self.station_id, err)
+            raise UpdateFailed(err)
+
+
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: Dict[str, Any],
+    async_add_entities,
+    discovery_info=None,
+) -> None:
+    """Set up sensors configured via YAML."""
+    yaml = hass.data.get(DOMAIN, {}).get("yaml_config", {}) or {}
+    stations = yaml.get("stations", [])
+    scan_interval = yaml.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+
+    hass.data.setdefault(DATA_COORDINATORS, {})
+
+    entities: List[SensorEntity] = []
+
+    for station in stations:
+        station_id = station.get("id")
+        if station_id is None:
+            _LOGGER.warning("Skipping station without id in YAML: %s", station)
+            continue
+        try:
+            station_id_int = int(station_id)
+        except (TypeError, ValueError):
+            _LOGGER.warning("Invalid station id '%s', skipping", station_id)
+            continue
+
+        coordinator = StationDataUpdateCoordinator(hass, station_id_int, scan_interval)
+        # store coordinator for later reference
+        hass.data[DATA_COORDINATORS][station_id_int] = coordinator
+
+        # Do an initial refresh (non-blocking pattern: refresh now to populate entities)
+        await coordinator.async_request_refresh()
+
+        data = coordinator.data or {}
+
+        # Create meta sensor (one per station)
+        entities.append(StationMetaSensor(coordinator, station))
+
+        # Extract fuels list robustly
+        fuels = data.get("fuels") or data.get("carburanti") or []
+        if not isinstance(fuels, list):
+            fuels = []
+
+        if fuels:
+            for fuel in fuels:
+                name = fuel.get("name") or fuel.get("fuel") or fuel.get("description")
+                is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
+                entities.append(FuelPriceSensor(coordinator, station, name, is_self))
+        else:
+            # No fuels returned yet: create a generic sensor to surface unavailability
+            entities.append(FuelPriceSensor(coordinator, station, None, True))
+
+    if entities:
+        async_add_entities(entities, True)
+
+
+class StationMetaSensor(SensorEntity):
+    """Sensor exposing station metadata as attributes."""
+
+    _attr_icon = DEFAULT_ICON
+
+    def __init__(self, coordinator: StationDataUpdateCoordinator, station_cfg: Dict[str, Any]):
+        self.coordinator = coordinator
+        self.station_cfg = station_cfg
+        self.station_id = int(station_cfg.get("id"))
+        configured_name = station_cfg.get("name")
+        self._name = configured_name or f"Osservaprezzi {self.station_id}"
+        self._unique_id = f"{DOMAIN}_{self.station_id}_meta"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def native_value(self) -> StateType:
+        # Meta sensor has no numeric state; use station id
+        return str(self.station_id)
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        data = self.coordinator.data or {}
+        attrs: Dict[str, Any] = {}
+        attrs["company"] = data.get("company") or data.get("gestore")
+        attrs["name"] = data.get("name") or data.get("description") or self._name
+        attrs["address"] = _format_address(data)
+        attrs["brand"] = data.get("brand")
+        attrs["raw"] = data
+        if not self.available:
+            attrs["error"] = "unavailable"
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.station_id))},
+            name=self._name,
+            manufacturer="Osservaprezzi / MIMIT",
+        )
+
+
+class FuelPriceSensor(SensorEntity):
+    """Sensor exposing price for a fuel at a station in self/servito mode."""
+
+    _attr_icon = DEFAULT_ICON
+
+    def __init__(
+        self,
+        coordinator: StationDataUpdateCoordinator,
+        station_cfg: Dict[str, Any],
+        fuel_name: Optional[str],
+        is_self: bool,
+    ) -> None:
+        self.coordinator = coordinator
+        self.station_cfg = station_cfg
+        self.station_id = int(station_cfg.get("id"))
+        self.configured_name = station_cfg.get("name")
+        self.fuel_name = fuel_name or "unknown"
+        self.is_self = is_self
+        mode = "self" if is_self else "attended"
+        normalized = _normalize(self.fuel_name)
+        self._unique_id = f"{DOMAIN}_{self.station_id}_{normalized}_{mode}"
+        base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
+        self._name = f"{base_name} {self.fuel_name} ({mode})"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def native_value(self) -> StateType:
+        data = self.coordinator.data or {}
+        fuels = data.get("fuels") or data.get("carburanti") or []
+        if not fuels:
+            return None
+        for f in fuels:
+            candidate = f.get("name") or f.get("fuel") or f.get("description")
+            candidate_is_self = bool(f.get("isSelf") or f.get("is_self") or False)
+            if str(candidate).lower() == str(self.fuel_name).lower() and candidate_is_self == self.is_self:
+                price = f.get("price") or f.get("prezzo")
+                try:
+                    return float(price) if price is not None else None
+                except (TypeError, ValueError):
+                    return None
+        # Fallback: try matching by name only
+        for f in fuels:
+            candidate = f.get("name") or f.get("fuel") or f.get("description")
+            if str(candidate).lower() == str(self.fuel_name).lower():
+                price = f.get("price") or f.get("prezzo")
+                try:
+                    return float(price) if price is not None else None
+                except (TypeError, ValueError):
+                    return None
+        return None
+
+    @property
+    def unit_of_measurement(self) -> Optional[str]:
+        # We assume €/l for liquid fuels; for kg (metano) the API usually specifies units.
+        return "€/l"
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        data = self.coordinator.data or {}
+        fuels = data.get("fuels") or data.get("carburanti") or []
+        attrs: Dict[str, Any] = {}
+        attrs["station_id"] = self.station_id
+        attrs["fuel_name"] = self.fuel_name
+        attrs["is_self"] = self.is_self
+        attrs["company"] = data.get("company") or data.get("gestore")
+        attrs["name"] = data.get("name") or data.get("description")
+        attrs["address"] = _format_address(data)
+
+        # find matching fuel entry to expose validityDate and raw data
+        for f in fuels:
+            candidate = f.get("name") or f.get("fuel") or f.get("description")
+            candidate_is_self = bool(f.get("isSelf") or f.get("is_self") or False)
+            if (not self.fuel_name or str(candidate).lower() == str(self.fuel_name).lower()) and candidate_is_self == self.is_self:
+                attrs["raw_fuel"] = f
+                validity = f.get("validityDate") or f.get("validity_date")
+                if validity:
+                    try:
+                        # Expecting epoch ms or ISO string. Try parsing robustly.
+                        if isinstance(validity, (int, float)):
+                            dt = datetime.fromtimestamp(int(validity) / 1000)
+                        else:
+                            dt = datetime.fromisoformat(str(validity))
+                        attrs["validity_date"] = dt.isoformat()
+                    except Exception:
+                        attrs["validity_date"] = str(validity)
+                break
+
+        # Brand logo (if mapped)
+        brand = data.get("brand")
+        if brand:
+            key = str(brand).lower()
+            logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
+            if logo:
+                attrs["brand_logo"] = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+        if not self.available:
+            attrs["error"] = "unavailable"
+        attrs[ATTR_ATTRIBUTION] = "Data from Osservaprezzi (MIMIT)"
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        base_name = self.configured_name or (self.coordinator.data or {}).get("name") or f"Station {self.station_id}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.station_id))},
+            name=base_name,
+            manufacturer=(self.coordinator.data or {}).get("company") or "Osservaprezzi",
+        )

@@ -1,0 +1,11 @@
+{
+  "domain": "osservaprezzi_carburanti",
+  "name": "Osservaprezzi Carburanti",
+  "version": "0.1.0",
+  "documentation": "https://github.com/zava78/ha-osservaprezzi-carburanti",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@zava78"],
+  "iot_class": "cloud_polling",
+  "integration_type": "service"
+}
