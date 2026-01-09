@@ -196,16 +196,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         except Exception as err:
             _LOGGER.warning("Initial refresh failed for station %s: %s", station_id_int, err)
 
-        entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": st.get("name")}))
+        entities.append(StationMetaSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, entry.entry_id))
 
         fuels = coordinator.data.get("fuels") or coordinator.data.get("carburanti") or []
         if isinstance(fuels, list) and fuels:
             for fuel in fuels:
                 fname = fuel.get("name") or fuel.get("fuel") or fuel.get("description")
                 is_self = bool(fuel.get("isSelf") or fuel.get("is_self") or False)
-                entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, fname, is_self))
+                entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, fname, is_self, entry.entry_id))
         else:
-            entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, None, True))
+            entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, None, True, entry.entry_id))
 
     if entities:
         async_add_entities(entities, True)
@@ -226,13 +226,18 @@ class StationMetaSensor(SensorEntity):
 
     _attr_icon = DEFAULT_ICON
 
-    def __init__(self, coordinator: StationDataUpdateCoordinator, station_cfg: Dict[str, Any]):
+    def __init__(self, coordinator: StationDataUpdateCoordinator, station_cfg: Dict[str, Any], entry_id: str | None = None):
         self.coordinator = coordinator
         self.station_cfg = station_cfg
+        self.entry_id = entry_id
         self.station_id = int(station_cfg.get("id"))
         configured_name = station_cfg.get("name")
         self._name = configured_name or f"Osservaprezzi {self.station_id}"
-        self._unique_id = f"{DOMAIN}_{self.station_id}_meta"
+        # Include entry id in unique_id when available to avoid collisions across entries
+        if self.entry_id:
+            self._unique_id = f"{DOMAIN}_{self.entry_id}_{self.station_id}_meta"
+        else:
+            self._unique_id = f"{DOMAIN}_{self.station_id}_meta"
 
     @property
     def name(self) -> str:
@@ -272,8 +277,11 @@ class StationMetaSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
+        # Use entry-scoped identifier when available so each configured entry
+        # gets its own device instance for the same real-world station.
+        identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
         return DeviceInfo(
-            identifiers={(DOMAIN, str(self.station_id))},
+            identifiers={(DOMAIN, identifier)},
             name=self._name,
             manufacturer="Osservaprezzi / MIMIT",
         )
@@ -290,18 +298,27 @@ class FuelPriceSensor(SensorEntity):
         station_cfg: Dict[str, Any],
         fuel_name: Optional[str],
         is_self: bool,
+        entry_id: str | None = None,
     ) -> None:
         self.coordinator = coordinator
         self.station_cfg = station_cfg
+        self.entry_id = entry_id
         self.station_id = int(station_cfg.get("id"))
         self.configured_name = station_cfg.get("name")
         self.fuel_name = fuel_name or "unknown"
         self.is_self = is_self
         mode = "self" if is_self else "attended"
         normalized = _normalize(self.fuel_name)
-        self._unique_id = f"{DOMAIN}_{self.station_id}_{normalized}_{mode}"
+        # Unique id includes entry id when available to prevent collisions
+        if entry_id:
+            self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_{normalized}_{mode}"
+        else:
+            self._unique_id = f"{DOMAIN}_{self.station_id}_{normalized}_{mode}"
+
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
-        self._name = f"{base_name} {self.fuel_name} ({mode})"
+        # Produce a clearer, user-friendly entity name
+        mode_label = "Self" if is_self else "Servito"
+        self._name = f"{base_name} — {self.fuel_name} ({mode_label})"
 
     @property
     def name(self) -> str:
@@ -344,6 +361,13 @@ class FuelPriceSensor(SensorEntity):
     @property
     def unit_of_measurement(self) -> Optional[str]:
         # We assume €/l for liquid fuels; for kg (metano) the API usually specifies units.
+        return "€/l"
+
+    @property
+    def native_unit_of_measurement(self) -> Optional[str]:
+        # Home Assistant 2025.12 prefers `native_unit_of_measurement` for SensorEntity.
+        # Keep `unit_of_measurement` for backward compatibility but provide the
+        # modern property to ensure proper compatibility with newer HA releases.
         return "€/l"
 
     @property
@@ -392,8 +416,9 @@ class FuelPriceSensor(SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         base_name = self.configured_name or (self.coordinator.data or {}).get("name") or f"Station {self.station_id}"
+        identifier = f"{self.entry_id}_{self.station_id}" if getattr(self, "entry_id", None) else str(self.station_id)
         return DeviceInfo(
-            identifiers={(DOMAIN, str(self.station_id))},
+            identifiers={(DOMAIN, identifier)},
             name=base_name,
             manufacturer=(self.coordinator.data or {}).get("company") or "Osservaprezzi",
         )

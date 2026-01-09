@@ -24,9 +24,45 @@ class OsservaprezziCompareCard extends HTMLElement {
     this._container.className = 'os-compare';
     this._shadow.appendChild(this._container);
 
+    // Title and controls
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    this._container.appendChild(header);
+
     this._title = document.createElement('div');
     this._title.className = 'os-title';
-    this._container.appendChild(this._title);
+    header.appendChild(this._title);
+
+    this._controls = document.createElement('div');
+    this._controls.style.display = 'flex';
+    this._controls.style.gap = '8px';
+    header.appendChild(this._controls);
+
+    // Sort key selector
+    this._sortKey = 'price';
+    this._sortAsc = true;
+    this._btnSortKey = document.createElement('button');
+    this._btnSortKey.textContent = 'Ordina: Prezzo';
+    this._btnSortKey.title = 'Clicca per cambiare criterio di ordinamento';
+    this._btnSortKey.addEventListener('click', () => {
+      this._sortKey = this._sortKey === 'price' ? 'name' : 'price';
+      this._btnSortKey.textContent = this._sortKey === 'price' ? 'Ordina: Prezzo' : 'Ordina: Nome';
+      this._update();
+    });
+    this._controls.appendChild(this._btnSortKey);
+
+    // Toggle asc/desc
+    this._btnToggleDir = document.createElement('button');
+    this._btnToggleDir.textContent = '▲';
+    this._btnToggleDir.title = 'Clicca per invertire ordine';
+    this._btnToggleDir.addEventListener('click', () => {
+      this._sortAsc = !this._sortAsc;
+      this._btnToggleDir.textContent = this._sortAsc ? '▲' : '▼';
+      this._update();
+    });
+    this._controls.appendChild(this._btnToggleDir);
 
     this._table = document.createElement('table');
     this._container.appendChild(this._table);
@@ -90,11 +126,16 @@ class OsservaprezziCompareCard extends HTMLElement {
       this._datasets.push({label: name, data: [], borderColor: colors[i % colors.length], backgroundColor: 'rgba(0,0,0,0)', fill:false, tension:0.2});
     });
 
-    // sort rows by numeric price (null treated as Infinity) and append to tbody
+    // sort rows according to selected sort key and direction
     rowsData.sort((a,b)=>{
+      const dir = this._sortAsc ? 1 : -1;
+      if (this._sortKey === 'name') {
+        return dir * a.name.localeCompare(b.name);
+      }
+      // price
       const va = a.priceNum===null?Number.POSITIVE_INFINITY:a.priceNum;
       const vb = b.priceNum===null?Number.POSITIVE_INFINITY:b.priceNum;
-      return va - vb;
+      return dir * (va - vb);
     });
     tbody.innerHTML = '';
     let bestPrice = null;
