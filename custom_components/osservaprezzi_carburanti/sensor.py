@@ -9,7 +9,11 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_NAME
 from homeassistant.core import HomeAssistant
@@ -319,6 +323,18 @@ class FuelPriceSensor(SensorEntity):
         # Produce a clearer, user-friendly entity name
         mode_label = "Self" if is_self else "Servito"
         self._name = f"{base_name} — {self.fuel_name} ({mode_label})"
+
+        # Use SensorEntityDescription to provide metadata (native unit, state_class)
+        self.entity_description = SensorEntityDescription(
+            key=self._unique_id,
+            name=self._name,
+            native_unit_of_measurement="€/l",
+            state_class=SensorStateClass.MEASUREMENT,
+        )
+
+        # Also set modern internal attributes for compatibility
+        self._attr_native_unit_of_measurement = "€/l"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def name(self) -> str:
