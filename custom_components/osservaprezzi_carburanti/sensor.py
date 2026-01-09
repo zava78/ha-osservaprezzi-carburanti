@@ -741,6 +741,7 @@ class StationMetaSensor(SensorEntity):
             identifiers={(DOMAIN, identifier)},
             name=self._name,
             manufacturer="Osservaprezzi / MIMIT",
+        )
     def native_value(self) -> StateType:
         data = self.coordinator.data or {}
         fuels = data.get("fuels") or data.get("carburanti") or []
