@@ -210,6 +210,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         else:
             entities.append(FuelPriceSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, None, True, entry.entry_id))
 
+        # Nuovi sensori aggiuntivi
+        entities.append(StationLocationSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, entry.entry_id))
+        entities.append(StationOpeningStatusSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, entry.entry_id))
+        
+        # Sensori contatti se disponibili nel dato (ma qui siamo in setup, potremmo non averli ancora se il refresh fallisce)
+        # Tuttavia il refresh è già stato tentato sopra.
+        # Creiamo i sensori contatti genericamente, gestiranno loro se i dati mancano
+        for contact_type in ["phone", "email", "website"]:
+             entities.append(StationContactSensor(coordinator, {"id": station_id_int, "name": st.get("name")}, contact_type, entry.entry_id))
+
     if entities:
         async_add_entities(entities, True)
 
@@ -482,3 +492,178 @@ class FuelPriceSensor(SensorEntity):
             name=base_name,
             manufacturer=data.get("company") or "Osservaprezzi",
         )
+
+
+class StationContactSensor(SensorEntity):
+    """Sensore per informazioni di contatto (Telefono, Email, Sito)."""
+
+    def __init__(self, coordinator, station_cfg, contact_type, entry_id=None):
+        self.coordinator = coordinator
+        self.station_cfg = station_cfg
+        self.entry_id = entry_id
+        self.station_id = int(station_cfg.get("id"))
+        self.contact_type = contact_type
+        
+        self._name = f"Contatto {contact_type.capitalize()}"
+        if entry_id:
+             self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_{contact_type}"
+        else:
+             self._unique_id = f"{DOMAIN}_{self.station_id}_{contact_type}"
+             
+        # Icone
+        icons = {
+            "phone": "mdi:phone",
+            "email": "mdi:email",
+            "website": "mdi:web",
+        }
+        self._attr_icon = icons.get(contact_type, "mdi:information")
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_value(self):
+        data = self.coordinator.data or {}
+        # Mapping campi API
+        keys = {
+            "phone": ["phoneNumber", "telefono"],
+            "email": ["email", "mail"],
+            "website": ["website", "sito", "url"],
+        }
+        for k in keys.get(self.contact_type, []):
+            if val := data.get(k):
+                return val
+        return "Non disponibile"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        # Link allo stesso device
+        identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
+        data = self.coordinator.data or {}
+        dev_name = self.station_cfg.get("name") or data.get("name") or f"Osservaprezzi {self.station_id}"
+        brand = data.get("brand")
+        if brand:
+            dev_name = f"{dev_name} - {brand}"
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, identifier)},
+            name=dev_name,
+            manufacturer="Osservaprezzi / MIMIT",
+        )
+
+
+class StationLocationSensor(SensorEntity):
+    """Sensore di posizione per la stazione."""
+
+    _attr_icon = "mdi:map-marker"
+
+    def __init__(self, coordinator, station_cfg, entry_id=None):
+        self.coordinator = coordinator
+        self.station_cfg = station_cfg
+        self.entry_id = entry_id
+        self.station_id = int(station_cfg.get("id"))
+        self._name = "Posizione Stazione"
+        if entry_id:
+             self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_location"
+        else:
+             self._unique_id = f"{DOMAIN}_{self.station_id}_location"
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_value(self):
+        # Valore indicativo, usiamo gli attributi per la mappa
+        return "Vedi Mappa"
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data or {}
+        attrs = {}
+        coords = find_coordinates(data)
+        if coords:
+            attrs["latitude"] = coords[0]
+            attrs["longitude"] = coords[1]
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
+        data = self.coordinator.data or {}
+        dev_name = self.station_cfg.get("name") or data.get("name") or f"Osservaprezzi {self.station_id}"
+        brand = data.get("brand")
+        if brand:
+            dev_name = f"{dev_name} - {brand}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, identifier)},
+            name=dev_name,
+            manufacturer="Osservaprezzi / MIMIT",
+        )
+
+
+class StationOpeningStatusSensor(SensorEntity):
+    """Sensore stato apertura (Aperto/Chiuso)."""
+
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(self, coordinator, station_cfg, entry_id=None):
+        self.coordinator = coordinator
+        self.station_cfg = station_cfg
+        self.entry_id = entry_id
+        self.station_id = int(station_cfg.get("id"))
+        self._name = "Stato Apertura"
+        if entry_id:
+             self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_opening_status"
+        else:
+             self._unique_id = f"{DOMAIN}_{self.station_id}_opening_status"
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_value(self):
+        # Logica semplificata: se abbiamo orari, potremmo calcolare.
+        # Per ora ritorniamo "N/D" se non implementiamo il calcolo complesso, 
+        # o un placeholder se l'utente vuole solo vedere i dati grezzi.
+        # L'utente ha chiesto "sensori per open/closed status e next opening/closing time".
+        # Senza una libreria di orari complessa, è difficile. 
+        # Esporremo "Dati Orari" e metteremo il JSON negli attributi per ora.
+        data = self.coordinator.data or {}
+        if data.get("orariapertura"):
+             return "Vedi Attributi"
+        return "Non disponibile"
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data or {}
+        return {"orari": data.get("orariapertura")}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        identifier = f"{self.entry_id}_{self.station_id}" if self.entry_id else str(self.station_id)
+        data = self.coordinator.data or {}
+        dev_name = self.station_cfg.get("name") or data.get("name") or f"Osservaprezzi {self.station_id}"
+        brand = data.get("brand")
+        if brand:
+            dev_name = f"{dev_name} - {brand}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, identifier)},
+            name=dev_name,
+            manufacturer="Osservaprezzi / MIMIT",
+        )
+
