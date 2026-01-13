@@ -516,12 +516,17 @@ class FuelPriceSensor(SensorEntity):
         brand = data.get("brand")
         if brand:
             base_name = f"{base_name} - {brand}"
-
+            
+        # Create a separate device for Fuels as requested ("distinti dalle informazioni")
+        # Appending "_fuels" to identifier and "Listino" to name
         identifier = f"{self.entry_id}_{self.station_id}" if getattr(self, "entry_id", None) else str(self.station_id)
+        
         return DeviceInfo(
-            identifiers={(DOMAIN, identifier)},
-            name=base_name,
+            identifiers={(DOMAIN, f"{identifier}_fuels")},
+            name=f"{base_name} (Listino)",
             manufacturer=data.get("company") or "Osservaprezzi",
+            # Link via via_device to the main station if possible, but HA doesn't support via_device for same integration easily without setup.
+            # Just separate device is enough.
         )
 
 
