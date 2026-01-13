@@ -37,30 +37,51 @@ class OsservaprezziAPI:
             
             return data
 
-    async def get_all_logos(self) -> Dict[int, str]:
-        """Fetch all brand logos and return a map of Brand ID -> Base64 Image."""
+    async def get_all_logos(self) -> Dict[str | int, str]:
+        """Fetch all brand logos and return a map of Brand ID/Name -> Base64 Image."""
         try:
             async with self.session.get(API_BRAND_LOGOS_URL, timeout=REQUEST_TIMEOUT) as resp:
                 if resp.status != 200:
                     _LOGGER.warning("Failed to fetch brand logos: HTTP %s", resp.status)
                     return {}
                 
-                data = await resp.json()
+                payload = await resp.json()
+                # Structure: { "loghi": [ { "bandieraId": 123, "bandiera": "Name", "logoMarkerList": [...] }, ... ] }
+                if not isinstance(payload, dict):
+                    return {}
+                
+                data = payload.get("loghi")
                 if not isinstance(data, list):
                     return {}
                 
-                # Convert list of logo objects to a map {brandId: base64_with_prefix}
-                logos_map = {}
+                logos_map: Dict[str | int, str] = {}
                 for item in data:
-                    brand_id = item.get("id")
-                    content = item.get("content")
-                    ext = item.get("estensione", "png")
-                    if brand_id and content:
-                        # Ensure base64 prefix is present
-                        if not content.startswith("data:"):
-                            content = f"data:image/{ext};base64,{content}"
-                        logos_map[brand_id] = content
-                
+                    brand_id = item.get("bandieraId")
+                    brand_name = item.get("bandiera")
+                    
+                    # logoMarkerList is a list of logo objects
+                    markers = item.get("logoMarkerList")
+                    if isinstance(markers, list) and markers:
+                        # Pick the first one
+                        logo_obj = markers[0]
+                        content = logo_obj.get("content")
+                        ext = logo_obj.get("estensione", "png")
+                        
+                        if content:
+                            if not content.startswith("data:"):
+                                content = f"data:image/{ext};base64,{content}"
+                            
+                            # Map by ID
+                            if brand_id:
+                                logos_map[brand_id] = content
+                                logos_map[str(brand_id)] = content
+                            
+                            # Map by Name
+                            if brand_name:
+                                logos_map[brand_name] = content
+                                # Also key by normalized/lowercase just in case
+                                logos_map[brand_name.lower()] = content
+
                 return logos_map
         except Exception as err:
             _LOGGER.warning("Error fetching brand logos: %s", err)

@@ -300,16 +300,24 @@ class StationMetaSensor(SensorEntity):
         attrs["brand"] = brand
         
         # Gestione logo dinamico
+        # Gestione logo dinamico
         brand_id = data.get("brandId")
-        if brand_id is not None:
-             # Try to find logo in dynamic map
-             logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
-             if str(brand_id) in logos:
-                 attrs["brand_logo"] = logos[str(brand_id)]
-             elif int(brand_id) in logos:
-                 attrs["brand_logo"] = logos[int(brand_id)]
+        logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
         
-        # Fallback to local static assets if not found dynamically
+        # 1. Try by Brand ID
+        if brand_id is not None and str(brand_id) in logos:
+            attrs["brand_logo"] = logos[str(brand_id)]
+        
+        # 2. Try by Brand Name (if not found by ID)
+        if "brand_logo" not in attrs and brand:
+            # Try exact match
+            if brand in logos:
+                attrs["brand_logo"] = logos[brand]
+            # Try lower match
+            elif brand.lower() in logos:
+                attrs["brand_logo"] = logos[brand.lower()]
+        
+        # 3. Fallback to local static assets if not found dynamically
         if "brand_logo" not in attrs and brand:
             key = str(brand).lower()
             logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
@@ -476,13 +484,20 @@ class FuelPriceSensor(SensorEntity):
         # Let's simple duplicate the logic to ensure the price card has the logo directly.
         brand = data.get("brand")
         brand_id = data.get("brandId")
-        if brand_id is not None:
-             logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
-             if str(brand_id) in logos:
-                 attrs["brand_logo"] = logos[str(brand_id)]
-             elif int(brand_id) in logos:
-                 attrs["brand_logo"] = logos[int(brand_id)]
+        logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
         
+        # 1. Try by Brand ID
+        if brand_id is not None and str(brand_id) in logos:
+            attrs["brand_logo"] = logos[str(brand_id)]
+            
+        # 2. Try by Brand Name
+        if "brand_logo" not in attrs and brand:
+            if brand in logos:
+                attrs["brand_logo"] = logos[brand]
+            elif brand.lower() in logos:
+                attrs["brand_logo"] = logos[brand.lower()]
+        
+        # 3. Fallback
         if "brand_logo" not in attrs and brand:
             key = str(brand).lower()
             logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
