@@ -280,17 +280,6 @@ class OsservaPrezziConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title = data["title"]
         return self.async_create_entry(title=title, data=data)
 
-def verified_selector(options):
-    """Helper to create a multi-select selector."""
-    from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
-    return SelectSelector(
-        SelectSelectorConfig(
-            options=[{"label": v, "value": k} for k, v in options.items()],
-            multiple=True,
-            mode=SelectSelectorMode.LIST,
-        )
-    )
-
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None):
         """Confirmation step when some station IDs were invalid.
 
@@ -329,3 +318,15 @@ def verified_selector(options):
         else:
             title = data["title"]
         return self.async_create_entry(title=title, data=data)
+
+
+def verified_selector(options):
+    """Helper to create a multi-select selector."""
+    from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[{"label": v, "value": k} for k, v in options.items()],
+            multiple=True,
+            mode=SelectSelectorMode.LIST,
+        )
+    )
