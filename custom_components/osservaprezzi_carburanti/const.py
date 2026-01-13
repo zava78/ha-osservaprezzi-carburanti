@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 DOMAIN = "osservaprezzi_carburanti"
-DEFAULT_SCAN_INTERVAL = 14400  # seconds (4 hours)
+DEFAULT_SCAN_INTERVAL = 3600  # seconds
 API_URL_TEMPLATE = "https://carburanti.mise.gov.it/ospzApi/registry/servicearea/{id}"
 API_BRAND_LOGOS_URL = "https://carburanti.mise.gov.it/ospzApi/registry/alllogos"
 API_SEARCH_AREA_URL = "https://carburanti.mise.gov.it/ospzApi/search/area"

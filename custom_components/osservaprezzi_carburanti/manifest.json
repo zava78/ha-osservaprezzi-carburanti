@@ -1,7 +1,7 @@
 {
   "domain": "osservaprezzi_carburanti",
   "name": "Osservaprezzi Carburanti",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "documentation": "https://github.com/zava78/ha-osservaprezzi-carburanti",
   "requirements": [],
   "dependencies": [],
