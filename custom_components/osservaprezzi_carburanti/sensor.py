@@ -48,18 +48,35 @@ def _normalize(text: Optional[str]) -> str:
 
 
 def _format_address(data: Dict[str, Any]) -> str:
-    # Tenta di estrarre un indirizzo leggibile dai campi noti, altrimenti usa una fallback
-    for key in ("address", "indirizzo", "street"):
-        if key in data and data[key]:
-            return data[key]
+    # Tenta di estrarre un indirizzo leggibile e ben formattato
+    # Es. "Via Roma 10, 20100 Milano (MI)"
+    
+    # 1. Via e Civico
+    street = data.get("indirizzo") or data.get("address") or data.get("street") or ""
+    civic = data.get("civic") or ""
+    
+    address_part = street
+    if civic:
+        address_part = f"{street} {civic}" if street else civic
 
-    parts = []
-    for k in ("street", "civic", "city", "municipality", "prov", "province", "zip"):
-        v = data.get(k) or data.get(k.upper())
-        if v:
-            parts.append(str(v))
+    # 2. CAP, Comune, Provincia
+    zip_code = data.get("zip") or data.get("cap") or ""
+    town = data.get("city") or data.get("municipality") or data.get("comune") or ""
+    province = data.get("prov") or data.get("province") or data.get("provincia") or ""
+
+    location_part = ""
+    if zip_code:
+        location_part += f"{zip_code} "
+    if town:
+        location_part += town
+    if province:
+        location_part += f" ({province})"
+
+    # Combine
+    parts = [p.strip() for p in (address_part, location_part) if p.strip()]
     if parts:
         return ", ".join(parts)
+        
     return data.get("name") or data.get("description") or ""
 
 
@@ -277,6 +294,20 @@ class StationMetaSensor(SensorEntity):
             logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
             if logo:
                  attrs["brand_logo"] = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+
+        attrs["station_type"] = data.get("stationType") or "Sconosciuto"
+        
+        # Data inserimento (utile per capire quanto è aggiornato il dato lato Ministero)
+        insert_date = data.get("insertDate")
+        if insert_date:
+            try:
+                if isinstance(insert_date, str):
+                    dt = datetime.fromisoformat(insert_date.replace("Z", "+00:00"))
+                    attrs["insert_date"] = dt.isoformat()
+                else:
+                    attrs["insert_date"] = str(insert_date)
+            except Exception:
+                attrs["insert_date"] = str(insert_date)
 
         attrs["raw"] = data
         coords = find_coordinates(data)
