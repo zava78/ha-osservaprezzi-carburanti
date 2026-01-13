@@ -24,6 +24,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.helpers.event import async_track_time_change
 
 from .api import OsservaprezziAPI
 from .const import (
@@ -92,6 +93,16 @@ class StationDataUpdateCoordinator(DataUpdateCoordinator):
             name=f"osservaprezzi_{station_id}",
             update_interval=scan_interval_td(scan_interval),
         )
+        
+        # Se l'intervallo è circa 1 giorno (default daily), forziamo l'aggiornamento alle 08:30
+        # Questo per rispettare la richiesta di "Scheduled Updates: ... default is daily at 08:30"
+        # Se l'utente ha impostato 3600s, questo refresh delle 08:30 sarà solo un "di più", male non fa.
+        async_track_time_change(hass, self._async_scheduled_update, hour=8, minute=30, second=0)
+
+    async def _async_scheduled_update(self, now):
+        """Force update at scheduled time."""
+        _LOGGER.debug("Esecuzione aggiornamento programmato delle 08:30")
+        await self.async_request_refresh()
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Recupera i dati dall'API e ritorna il JSON."""
