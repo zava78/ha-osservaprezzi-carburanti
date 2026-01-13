@@ -387,7 +387,12 @@ class FuelPriceSensor(SensorEntity):
 
         base_name = self.configured_name or (coordinator.data or {}).get("name") or f"Station {self.station_id}"
         mode_label = "Self" if is_self else "Servito"
-        self._name = f"{base_name} {self.fuel_name} ({mode_label})"
+        # Richiesta utente: "solo il nome del tipo di carburante"
+        # Usiamo has_entity_name = True così HA prepende il nome del device se necessario,
+        # ma nella UI del device apparirà pulito.
+        self._attr_has_entity_name = True
+        self._attr_name = f"{self.fuel_name} ({mode_label})"
+        self._name = self._attr_name # Backward compatibility internal usage
 
         self.entity_description = SensorEntityDescription(
             key=self._unique_id,
@@ -402,7 +407,7 @@ class FuelPriceSensor(SensorEntity):
 
     @property
     def name(self) -> str:
-        return self._name
+        return self._attr_name
 
     @property
     def unique_id(self) -> str:
@@ -515,7 +520,10 @@ class StationContactSensor(SensorEntity):
         self.station_id = int(station_cfg.get("id"))
         self.contact_type = contact_type
         
-        self._name = f"Contatto {contact_type.capitalize()}"
+        self._attr_has_entity_name = True
+        self._attr_name = f"Contatto {contact_type.capitalize()}"
+        self._name = self._attr_name
+
         if entry_id:
              self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_{contact_type}"
         else:
@@ -531,7 +539,7 @@ class StationContactSensor(SensorEntity):
 
     @property
     def name(self):
-        return self._name
+        return self._attr_name
 
     @property
     def unique_id(self):
@@ -578,7 +586,11 @@ class StationLocationSensor(SensorEntity):
         self.station_cfg = station_cfg
         self.entry_id = entry_id
         self.station_id = int(station_cfg.get("id"))
-        self._name = "Posizione Stazione"
+        
+        self._attr_has_entity_name = True
+        self._attr_name = "Posizione Stazione"
+        self._name = self._attr_name
+        
         if entry_id:
              self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_location"
         else:
@@ -586,7 +598,7 @@ class StationLocationSensor(SensorEntity):
 
     @property
     def name(self):
-        return self._name
+        return self._attr_name
 
     @property
     def unique_id(self):
@@ -632,7 +644,11 @@ class StationOpeningStatusSensor(SensorEntity):
         self.station_cfg = station_cfg
         self.entry_id = entry_id
         self.station_id = int(station_cfg.get("id"))
-        self._name = "Stato Apertura"
+        
+        self._attr_has_entity_name = True
+        self._attr_name = "Stato Apertura"
+        self._name = self._attr_name
+        
         if entry_id:
              self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_opening_status"
         else:
@@ -640,7 +656,7 @@ class StationOpeningStatusSensor(SensorEntity):
 
     @property
     def name(self):
-        return self._name
+        return self._attr_name
 
     @property
     def unique_id(self):

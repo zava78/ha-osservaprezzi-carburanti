@@ -60,12 +60,14 @@ class StationServiceSensor(CoordinatorEntity, BinarySensorEntity):
         friendly_id = "".join(c if c.isalnum() else "_" for c in service_name.lower())
         
         self._unique_id = f"{DOMAIN}_{entry_id}_{self.station_id}_service_{friendly_id}"
+        self._attr_has_entity_name = True
         self._attr_name = f"Servizio {service_name}"
+        self._name = self._attr_name
         self._attr_is_on = True # Se è nella lista, è attivo
         
     @property
-    def unique_id(self) -> str:
-        return self._unique_id
+    def name(self):
+        return self._attr_name
 
     @property
     def device_info(self) -> DeviceInfo:
