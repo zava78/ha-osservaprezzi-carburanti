@@ -303,26 +303,32 @@ class StationMetaSensor(SensorEntity):
         # Gestione logo dinamico
         brand_id = data.get("brandId")
         logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
-        
+        logo_url = None
+
         # 1. Try by Brand ID
-        if brand_id is not None and str(brand_id) in logos:
-            attrs["brand_logo"] = logos[str(brand_id)]
+        if brand_id is not None:
+             if str(brand_id) in logos:
+                 logo_url = logos[str(brand_id)]
+             elif int(brand_id) in logos:
+                 logo_url = logos[int(brand_id)]
         
-        # 2. Try by Brand Name (if not found by ID)
-        if "brand_logo" not in attrs and brand:
-            # Try exact match
+        # 2. Try by Brand Name
+        if not logo_url and brand:
             if brand in logos:
-                attrs["brand_logo"] = logos[brand]
-            # Try lower match
+                logo_url = logos[brand]
             elif brand.lower() in logos:
-                attrs["brand_logo"] = logos[brand.lower()]
+                logo_url = logos[brand.lower()]
         
-        # 3. Fallback to local static assets if not found dynamically
-        if "brand_logo" not in attrs and brand:
+        # 3. Fallback
+        if not logo_url and brand:
             key = str(brand).lower()
             logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
             if logo:
-                 attrs["brand_logo"] = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+                 logo_url = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+        
+        if logo_url:
+            self._attr_entity_picture = logo_url
+            attrs["brand_logo"] = logo_url
 
         attrs["station_type"] = data.get("stationType") or "Sconosciuto"
         
@@ -482,27 +488,33 @@ class FuelPriceSensor(SensorEntity):
         # Logo: copy logic from Meta Sensor for consistency directly on fuel sensors too if desired,
         # otherwise users usually check the meta sensor or we duplicate.
         # Let's simple duplicate the logic to ensure the price card has the logo directly.
+        # Logic to resolve logo for entity_picture
         brand = data.get("brand")
         brand_id = data.get("brandId")
         logos = self.coordinator.hass.data.get(DATA_LOGOS, {})
         
+        logo_url = None
         # 1. Try by Brand ID
         if brand_id is not None and str(brand_id) in logos:
-            attrs["brand_logo"] = logos[str(brand_id)]
+            logo_url = logos[str(brand_id)]
             
         # 2. Try by Brand Name
-        if "brand_logo" not in attrs and brand:
+        if not logo_url and brand:
             if brand in logos:
-                attrs["brand_logo"] = logos[brand]
+                logo_url = logos[brand]
             elif brand.lower() in logos:
-                attrs["brand_logo"] = logos[brand.lower()]
+                logo_url = logos[brand.lower()]
         
         # 3. Fallback
-        if "brand_logo" not in attrs and brand:
+        if not logo_url and brand:
             key = str(brand).lower()
             logo = BRAND_LOGOS.get(key) or BRAND_LOGOS.get(key.split()[0]) or BRAND_LOGOS.get("others")
             if logo:
-                attrs["brand_logo"] = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+                logo_url = f"/local/custom_components/{DOMAIN}/assets/brands/{logo}"
+        
+        if logo_url:
+            self._attr_entity_picture = logo_url
+            attrs["brand_logo"] = logo_url # Keep attribute for reference
         
         if not self.available:
             attrs["error"] = "unavailable"
@@ -626,8 +638,9 @@ class StationLocationSensor(SensorEntity):
 
     @property
     def native_value(self):
-        # Valore indicativo, usiamo gli attributi per la mappa
-        return "Vedi Mappa"
+        # Miglioramento: Mostriamo l'indirizzo invece di "Vedi Mappa"
+        data = self.coordinator.data or {}
+        return _format_address(data) or "Posizione non disponibile"
 
     @property
     def extra_state_attributes(self):
